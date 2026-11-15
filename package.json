@@ -1,0 +1,24 @@
+{
+  "name": "cac",
+  "private": true,
+  "packageManager": "pnpm@10.18.0",
+  "scripts": {
+    "dev": "convex dev",
+    "app": "pnpm --filter app start",
+    "seed": "convex run seed:run",
+    "ingest": "convex run ingest:runDue '{\"force\":true}'",
+    "typecheck": "tsc --noEmit -p convex && tsc --noEmit -p tsconfig.test.json && pnpm --filter app typecheck",
+    "test": "vitest run",
+    "lint": "pnpm --filter app lint"
+  },
+  "dependencies": {
+    "convex": "^1.50.0"
+  },
+  "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
+    "@types/node": "^24.0.0",
+    "convex-test": "^0.0.71",
+    "typescript": "~6.0.3",
+    "vitest": "^5.1.0"
+  }
+}

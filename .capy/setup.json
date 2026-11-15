@@ -1,0 +1,14 @@
+{
+  "format_version": 1,
+  "scripts": {
+    "initialize": "pnpm install --frozen-lockfile",
+    "refresh": "pnpm install --frozen-lockfile"
+  },
+  "startup": [
+    { "name": "convex", "command": "npx convex dev --local" }
+  ],
+  "commands": [
+    { "name": "typecheck", "command": "pnpm typecheck" },
+    { "name": "test", "command": "pnpm test" }
+  ]
+}
