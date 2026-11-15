@@ -1,0 +1,39 @@
+name: Revyl main build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/revyl-main-build.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: revyl-main-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: app
+    env:
+      REVYL_API_KEY: ${{ secrets.REVYL_API_KEY }}
+      EXPO_PUBLIC_CONVEX_URL: ${{ vars.EXPO_PUBLIC_CONVEX_URL || 'https://nautical-sheep-358.convex.cloud' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Revyl CLI
+        run: |
+          curl -fsSL https://revyl.com/install.sh | sh
+          echo "$HOME/.revyl/bin" >> "$GITHUB_PATH"
+
+      - name: Build Scout iOS for main on Revyl
+        run: |
+          SHORT=$(git rev-parse --short=7 HEAD)
+          revyl build --profile preview --platform ios \
+            --env EXPO_PUBLIC_CONVEX_URL="$EXPO_PUBLIC_CONVEX_URL" \
+            --branch main --version "main-$SHORT" --pin
