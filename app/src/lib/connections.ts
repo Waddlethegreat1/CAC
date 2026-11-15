@@ -16,9 +16,16 @@ const COPY: Record<string, string> = {
   company_unverified: "Scout reviews new companies before they can claim events or reach talent. This company is pending verification",
   host_required: "Company features are for verified hosts. Verify your work email to use them",
   event_ended: "This event has already ended, so it can't be marked Going",
+  personal_email: "Use your work or school email. Personal addresses like Gmail can't verify a host",
+  email_not_configured: "Scout can't send verification emails right now. Try again later",
+  email_send_failed: "We couldn't send the code. Check the address and try again",
+  invalid_code: "That code isn't right. Check the latest email and try again",
+  code_expired: "That code has expired. Send a new one",
+  too_many_attempts: "Too many wrong codes. Send a new one",
+  domain_taken: "Your company is already on Scout. Ask to join it instead",
 };
 
-const SERVER_DETAIL = new Set(["invalid", "forbidden", "rate_limited", "not_eligible", "blocked"]);
+const SERVER_DETAIL = new Set(["invalid", "forbidden", "rate_limited", "not_eligible", "blocked", "host_required"]);
 
 export function errorCode(error: unknown) {
   return error instanceof ConvexError && typeof error.data?.code === "string" ? (error.data.code as string) : null;
@@ -32,10 +39,14 @@ export function errorCopy(error: unknown) {
   return COPY[code] ?? detail ?? "Something went wrong. Try again";
 }
 
-export function useIsVerifiedHost() {
+export function useHostStatus() {
   const deviceId = useDeviceId();
-  const user = useQuery(api.users.get, deviceId ? { deviceId } : "skip");
-  return user === undefined ? undefined : user !== null;
+  return useQuery(api.hosts.status, deviceId ? { deviceId } : "skip");
+}
+
+export function useIsVerifiedHost() {
+  const status = useHostStatus();
+  return status === undefined ? undefined : status.verified;
 }
 
 export const isVerified = (company: { verified?: boolean }) => company.verified === true;

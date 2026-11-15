@@ -24,6 +24,7 @@ import { AREAS, ROLE_DEFAULT_INTERESTS, cityPlace, locateDevice, type Place, typ
 const ROLES: { id: Role; icon: IconName; title: string; blurb: string }[] = [
   { id: "student", icon: "graduation-cap", title: "Talent", blurb: "Find hackathons, pitch nights, and the rooms where you get discovered" },
   { id: "investor", icon: "briefcase", title: "Looking for Talent", blurb: "Find student events worth scouting or recruiting at" },
+  { id: "host", icon: "ticket", title: "I'm a host", blurb: "Run events for your company and meet the talent who came. Needs a work email" },
 ];
 
 export default function Onboarding() {
@@ -119,7 +120,7 @@ function OnboardingForm({ deviceId, existing }: { deviceId: string; existing: Do
     try {
       await upsert({ deviceId, role, interests, ...place, radiusKm, ...checked.values, ...(pro && "values" in pro ? pro.values : {}) });
       if (needsAccount && !(await createAccount(checked.values.email))) return;
-      router.replace("/feed");
+      router.replace(role === "host" ? "/host/verify" : "/feed");
     } catch (e) {
       const proError = professionalErrorOf(e);
       const fieldError = proError ? null : contactErrorOf(e);
@@ -134,7 +135,7 @@ function OnboardingForm({ deviceId, existing }: { deviceId: string; existing: Do
   };
 
   const next = () => {
-    if (step === 0 && !role) return setError("Choose Talent or Looking for Talent to continue");
+    if (step === 0 && !role) return setError("Choose Talent, Looking for Talent or I'm a host to continue");
     if (step === 1) {
       const checked = checkContact(contact);
       if ("errors" in checked) {
@@ -218,7 +219,9 @@ function OnboardingForm({ deviceId, existing }: { deviceId: string; existing: Do
               <Text style={styles.lede}>
                 {role === "investor"
                   ? "Tell us who's scouting. Your email and phone stay private to you"
-                  : "Tell us who you are. Your email and phone stay private to you"}
+                  : role === "host"
+                    ? "Tell us who you are. You'll verify a work email next. Your email and phone stay private to you"
+                    : "Tell us who you are. Your email and phone stay private to you"}
               </Text>
               <DetailsFields role={role} value={contact} errors={contactErrors} onChange={editContact} testIDPrefix="details" />
               {role === "student" ? <ProfessionalFields value={professional} errors={professionalErrors} onChange={editProfessional} testIDPrefix="details" /> : null}
