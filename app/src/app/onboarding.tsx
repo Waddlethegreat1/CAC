@@ -6,7 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Brand } from "@/components/brand";
 import { Button } from "@/components/button";
-import { DetailsFields, contactOf } from "@/components/details-fields";
+import { DetailsFields, contactErrorOf, contactOf } from "@/components/details-fields";
 import { Icon, type IconName } from "@/components/icon";
 import { Segmented } from "@/components/segmented";
 import { SelectChip } from "@/components/select-chip";
@@ -80,8 +80,12 @@ function OnboardingForm({ deviceId, existing }: { deviceId: string; existing: Do
     try {
       await upsert({ deviceId, role, interests, ...place, radiusKm, ...checked.values });
       router.replace("/feed");
-    } catch {
-      setError("Couldn't save your profile: no connection. Try again");
+    } catch (e) {
+      const fieldError = contactErrorOf(e);
+      if (!fieldError) return setError("Couldn't save your profile: no connection. Try again");
+      setContactErrors(fieldError);
+      setStep(1);
+      setError("Check the highlighted details");
     } finally {
       setSaving(false);
     }

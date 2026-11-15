@@ -6,7 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "@/components/button";
 import { AttendanceHistory } from "@/components/attendance";
-import { DetailsFields, affiliationLabel, contactOf } from "@/components/details-fields";
+import { DetailsFields, affiliationLabel, contactErrorOf, contactOf } from "@/components/details-fields";
 import { Icon } from "@/components/icon";
 import { Segmented } from "@/components/segmented";
 import { SelectChip } from "@/components/select-chip";
@@ -81,8 +81,10 @@ function ProfileForm({ user }: { user: User }) {
       });
       flash(done);
       return true;
-    } catch {
-      setError("Couldn't save: no connection. Try again");
+    } catch (e) {
+      const fieldError = contactErrorOf(e);
+      if (fieldError) setDetailErrors(fieldError);
+      setError(fieldError ? "Check the highlighted details" : "Couldn't save: no connection. Try again");
       return false;
     }
   };

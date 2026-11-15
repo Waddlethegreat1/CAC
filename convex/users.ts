@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { CONTACT_FIELDS, checkContactField } from "./lib/contact";
 import { role } from "./schema";
@@ -42,7 +42,7 @@ export const upsert = mutation({
         continue;
       }
       const result = checkContactField(field, raw);
-      if ("error" in result) throw new Error(`Invalid ${field}: ${result.error}`);
+      if ("error" in result) throw new ConvexError({ field, message: result.error });
       doc[field] = result.value || undefined;
     }
     if (existing) {

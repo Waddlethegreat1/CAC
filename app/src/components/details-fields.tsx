@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from "react-native";
 
 import { colors, radius, space, type } from "@/constants/theme";
@@ -13,6 +14,12 @@ export const contactOf = (user: Partial<Contact> | null | undefined): Contact =>
   affiliation: user?.affiliation ?? "",
   linkedin: user?.linkedin ?? "",
 });
+
+export function contactErrorOf(e: unknown): Partial<Contact> | null {
+  if (!(e instanceof ConvexError)) return null;
+  const { field, message } = e.data as { field?: ContactField; message?: string };
+  return field && message ? { [field]: message } : null;
+}
 
 export const affiliationLabel = (role: Role | null) => (role === "investor" ? "Firm or company" : "School or organization");
 

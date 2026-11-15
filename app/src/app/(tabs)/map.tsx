@@ -55,7 +55,7 @@ export default function MapDiscovery() {
     setBusy(true);
     setNotice(null);
     try {
-      const { _id, _creationTime, updatedAt, ...fields } = profile;
+      const { _id, _creationTime, updatedAt, name, email, phone, affiliation, linkedin, ...fields } = profile;
       await upsert({ ...fields, ...place, radiusKm: km });
       setRecenter((value) => value + 1);
       setShowAreas(false);
@@ -86,7 +86,7 @@ export default function MapDiscovery() {
     }
     try {
       if (profile) {
-        const { _id, _creationTime, updatedAt, ...fields } = profile;
+        const { _id, _creationTime, updatedAt, name, email, phone, affiliation, linkedin, ...fields } = profile;
         await upsert({ ...fields, ...result.place, radiusKm });
         setRecenter((value) => value + 1);
       }

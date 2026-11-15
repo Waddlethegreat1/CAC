@@ -47,7 +47,7 @@ export function useSearchRadius() {
     async (km: number) => {
       setDraft(km);
       if (!user) return;
-      const { _id, _creationTime, updatedAt, ...profile } = user;
+      const { _id, _creationTime, updatedAt, name, email, phone, affiliation, linkedin, ...profile } = user;
       await upsert({ ...profile, radiusKm: km });
     },
     [user, upsert],

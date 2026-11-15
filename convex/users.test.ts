@@ -1,4 +1,5 @@
 import { convexTest } from "convex-test";
+import { ConvexError } from "convex/values";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import { checkContactField } from "./lib/contact";
@@ -16,15 +17,15 @@ const base = (deviceId: string, role: "student" | "investor" = "student") => ({
 const alice = {
   ...base("alice-device-secret"),
   name: "Alice Chen", email: "alice.private@stanford.edu", phone: "+1 (415) 555-0100",
-  affiliation: "Stanford", linkedin: "linkedin.com/in/alice-chen-private",
+  affiliation: "Alicorp Labs", linkedin: "linkedin.com/in/alice-chen-private",
 };
 const bob = {
   ...base("bob-device-secret", "investor"),
   name: "Bob Ito", email: "bob.private@fund.vc", phone: "+44 20 7946 0958",
   affiliation: "Fund VC", linkedin: "https://www.linkedin.com/in/bob-ito-private/",
 };
-const ALICE_PII = ["alice-device-secret", "alice.private", "14155550100", "alice-chen-private"];
-const PII = [...ALICE_PII, "bob-device-secret", "bob.private", "442079460958", "bob-ito-private"];
+const ALICE_PII = ["alice-device-secret", "alice.private", "14155550100", "alice-chen-private", "Alice Chen", "Alicorp Labs"];
+const PII = [...ALICE_PII, "bob-device-secret", "bob.private", "442079460958", "bob-ito-private", "Bob Ito", "Fund VC"];
 
 describe("contact validation", () => {
   test("normalizes email, phone and LinkedIn and accepts empty optionals", () => {
@@ -44,7 +45,22 @@ describe("contact validation", () => {
       ["linkedin", "https://twitter.com/in/alice"], ["linkedin", "linkedin.com/company/acme"], ["linkedin", "a b"],
       ["name", "Alice\nChen"], ["name", "x".repeat(81)], ["affiliation", "x".repeat(101)],
       ["email", `${"a".repeat(250)}@x.com`], ["linkedin", "x".repeat(201)],
+      ["name", "\u200b"], ["name", "Al\u202eice"], ["name", "A\u0085B"], ["name", "\u2800"], ["affiliation", "Acme\u0000"],
+      ["email", "'><script>@x.com"], ["email", "a,b@x.com"], ["email", "a@-b.com"], ["email", "a@[127.0.0.1].com"],
+      ["email", `${"İ".repeat(127)}@x.co`], ["phone", "+0000000"], ["linkedin", "%0d%0a-evil"], ["linkedin", "evil.com/?q=linkedin.com/in/x"],
+      ["name", "x".repeat(1_000_000)],
     ] as const) expect(checkContactField(field, raw), `${field}: ${raw}`).toHaveProperty("error");
+  });
+
+  test("normalization is idempotent", () => {
+    for (const [field, raw] of [
+      ["email", " Ada@Stanford.EDU "], ["phone", "+1 (415) 555-0100"], ["phone", "415.555.0100"],
+      ["linkedin", "https://linkedin.com/in/ada/"], ["name", " Ada  Lovelace "], ["affiliation", " Stanford  GSB "],
+    ] as const) {
+      const first = checkContactField(field, raw);
+      if (!("value" in first)) throw new Error(`${field} rejected`);
+      expect(checkContactField(field, first.value)).toEqual(first);
+    }
   });
 });
 
@@ -57,13 +73,13 @@ describe("users.upsert contact details", () => {
     await t.mutation(api.users.upsert, alice);
     expect(await t.query(api.users.get, { deviceId: alice.deviceId })).toMatchObject({
       name: "Alice Chen", email: "alice.private@stanford.edu", phone: "+14155550100",
-      affiliation: "Stanford", linkedin: "https://www.linkedin.com/in/alice-chen-private",
+      affiliation: "Alicorp Labs", linkedin: "https://www.linkedin.com/in/alice-chen-private",
     });
     await t.mutation(api.users.upsert, { ...base(alice.deviceId), radiusKm: 40 });
     expect(await t.query(api.users.get, { deviceId: alice.deviceId })).toMatchObject({ name: "Alice Chen", phone: "+14155550100", radiusKm: 40 });
     await t.mutation(api.users.upsert, { ...base(alice.deviceId), phone: "", linkedin: "" });
     const cleared = await t.query(api.users.get, { deviceId: alice.deviceId });
-    expect(cleared).toMatchObject({ name: "Alice Chen", email: "alice.private@stanford.edu", affiliation: "Stanford" });
+    expect(cleared).toMatchObject({ name: "Alice Chen", email: "alice.private@stanford.edu", affiliation: "Alicorp Labs" });
     expect(cleared).not.toHaveProperty("phone");
     expect(cleared).not.toHaveProperty("linkedin");
   });
@@ -72,9 +88,19 @@ describe("users.upsert contact details", () => {
     const t = convexTest(schema, modules);
     await t.mutation(api.users.upsert, alice);
     for (const bad of [{ email: "nope" }, { email: "" }, { name: " " }, { phone: "12" }, { linkedin: "facebook.com/alice" }, { affiliation: "x".repeat(101) }]) {
-      await expect(t.mutation(api.users.upsert, { ...base(alice.deviceId), ...bad })).rejects.toThrow("Invalid");
+      const error = await t.mutation(api.users.upsert, { ...base(alice.deviceId), ...bad }).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(ConvexError);
+      expect((error as ConvexError<{ field: string }>).data.field).toBe(Object.keys(bad)[0]);
     }
     expect(await t.query(api.users.get, { deviceId: alice.deviceId })).toMatchObject({ email: "alice.private@stanford.edu", phone: "+14155550100" });
+  });
+
+  test("re-saving the stored profile, as the radius control does, round-trips", async () => {
+    const t = convexTest(schema, modules);
+    await t.mutation(api.users.upsert, alice);
+    const { _id, _creationTime, updatedAt, ...stored } = (await t.query(api.users.get, { deviceId: alice.deviceId }))!;
+    await t.mutation(api.users.upsert, { ...stored, radiusKm: 16 });
+    expect(await t.query(api.users.get, { deviceId: alice.deviceId })).toMatchObject({ ...stored, radiusKm: 16 });
   });
 
   test("a device's own read returns its details and never another user's", async () => {
@@ -118,6 +144,7 @@ describe("users.upsert contact details", () => {
       t.query(internal.attendance.goingForUser, { userId: aliceId }),
       t.query(internal.attendance.goingForUser, { userId: bobId }),
       t.query(api.events.search, { q: "hackathon" }),
+      t.query(api.links.mine, { deviceId: "someone-else" }),
     ]);
     expect((await t.query(api.investor.ranked, { deviceId: bob.deviceId })).events.map((e) => e._id)).toContain(hackathon);
     expect(reads.some((r) => r !== null)).toBe(true);

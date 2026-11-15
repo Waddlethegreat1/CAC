@@ -6,16 +6,17 @@ export const CONTACT_LIMITS: Record<ContactField, number> = { name: 80, email: 2
 
 type Checked = { value: string } | { error: string };
 
-const CONTROL = /[\u0000-\u001f\u007f\u0085\u2028\u2029]/u;
-const EMAIL = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)*\.[A-Za-z]{2,}$/;
-const LINKEDIN_HANDLE = /^[A-Za-z0-9_-][A-Za-z0-9_%-]{1,99}$/;
+const INVISIBLE = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Cs}\u2800\u3164\uFFA0]/u;
+const EMAIL = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/;
+const LINKEDIN_HANDLE = /^[A-Za-z0-9_-][A-Za-z0-9_-]{1,99}$/;
 const LINKEDIN_URL = /^(?:https?:\/\/)?(?:[a-z]{2,3}\.)?linkedin\.com\/in\/([^/?#\s]+)\/?(?:[?#].*)?$/i;
 
 const tooLong = (field: ContactField, value: string) => Array.from(value).length > CONTACT_LIMITS[field];
 
 export function checkContactField(field: ContactField, raw: string): Checked {
-  const trimmed = raw.trim().replace(/\s+/g, " ");
-  if (CONTROL.test(raw.replace(/[\t ]/g, ""))) return { error: "Use a single line of plain text" };
+  if (/[\r\n]/.test(raw) || INVISIBLE.test(raw.replace(/\t/g, ""))) return { error: "Use a single line of plain text" };
+  const collapsed = raw.trim().replace(/\s+/g, " ");
+  const trimmed = field === "email" ? collapsed.toLowerCase() : collapsed;
   if (tooLong(field, trimmed)) return { error: `Keep it under ${CONTACT_LIMITS[field]} characters` };
   if (trimmed === "") {
     if (field === "name") return { error: "Enter your name" };
@@ -26,14 +27,13 @@ export function checkContactField(field: ContactField, raw: string): Checked {
     case "name":
     case "affiliation":
       return { value: trimmed };
-    case "email": {
-      const email = trimmed.toLowerCase();
-      return EMAIL.test(email) ? { value: email } : { error: "Enter a valid email, like you@school.edu" };
-    }
+    case "email":
+      return EMAIL.test(trimmed) ? { value: trimmed } : { error: "Enter a valid email, like you@school.edu" };
     case "phone": {
       if (!/^\+?[0-9 ().-]+$/.test(trimmed)) return { error: "Use digits, spaces and an optional leading +" };
       const digits = trimmed.replace(/\D/g, "");
       if (digits.length < 7 || digits.length > 15) return { error: "Enter 7 to 15 digits, like +1 415 555 0100" };
+      if (trimmed.startsWith("+") && digits.startsWith("0")) return { error: "Country codes start with 1 to 9, like +1" };
       return { value: trimmed.startsWith("+") ? `+${digits}` : digits };
     }
     case "linkedin": {
