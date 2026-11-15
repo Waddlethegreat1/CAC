@@ -7,7 +7,7 @@ import { emailMode, sendVerificationEmail } from "./lib/email";
 import { emailDomain, isFreeMailDomain } from "./lib/freeMail";
 import { callerFor, isVerifiedHost, requireCaller, requireHostCaller } from "./lib/identity";
 import {
-  claimOf, eventSummary, fail, hostSlugs, isApproved, isLive, isMember, MAX_EVENT_TALENT, MAX_MEMBERSHIPS, MAX_ROWS, onDomain,
+  blockedUntil, canReviewClaim, claimOf, eventSummary, fail, hostSlugs, isApproved, isLive, isMember, MAX_EVENT_TALENT, MAX_MEMBERSHIPS, MAX_ROWS, onDomain,
   pairRows, profileView, requireMember, requireVerified, toEvent, toProfile, wentTo,
 } from "./lib/connections";
 import { claimStatus, role, verificationMode } from "./schema";
@@ -137,7 +137,7 @@ export const status = query({
     workEmail: v.union(v.string(), v.null()),
     workDomain: v.union(v.string(), v.null()),
     verificationMode: v.union(verificationMode, v.null()),
-    pending: v.union(v.null(), v.object({ email: v.string(), expiresAt: v.number(), attemptsLeft: v.number() })),
+    pending: v.union(v.null(), v.object({ email: v.string(), expiresAt: v.number(), attemptsLeft: v.number(), verificationMode })),
   }),
   handler: async (ctx, { deviceId }) => {
     const user = await callerFor(ctx, deviceId);
@@ -150,7 +150,7 @@ export const status = query({
       workEmail: user.workEmail ?? null,
       workDomain: user.workDomain ?? null,
       verificationMode: user.workEmailVerifiedAt !== undefined ? user.workEmailVerifiedVia ?? "email" : null,
-      pending: live ? { email: live.email, expiresAt: live.expiresAt, attemptsLeft: MAX_ATTEMPTS - live.attempts } : null,
+      pending: live ? { email: live.email, expiresAt: live.expiresAt, attemptsLeft: MAX_ATTEMPTS - live.attempts, verificationMode: live.mode } : null,
     };
   },
 });
@@ -201,8 +201,7 @@ export const reviewClaim = mutation({
     await requireMember(ctx, claim.companyId, user);
     const company = await requireVerified(ctx, claim.companyId);
     if (isApproved(claim)) return null;
-    if (claim.claimedBy === user._id) fail("forbidden", "Another member has to review your claim");
-    if (!company.domain || company.domain !== user.workDomain) fail("forbidden", "Only members with a verified email at the company's domain can approve claims");
+    if (!canReviewClaim(claim, company, user)) fail("forbidden", "Only another member with a verified email at the company's domain can review this claim");
     if (approve) await ctx.db.patch(claimId, { status: "approved" });
     else await ctx.db.delete(claimId);
     return null;
@@ -211,16 +210,20 @@ export const reviewClaim = mutation({
 
 export const hostingStatus = query({
   args: { deviceId: v.string(), eventId: v.id("events") },
-  returns: v.object({ canClaim: v.boolean(), claim: v.union(v.null(), claimResult) }),
+  returns: v.object({ canClaim: v.boolean(), claim: v.union(v.null(), v.object({ ...claimResult.fields, canReview: v.boolean() })) }),
   handler: async (ctx, { deviceId, eventId }) => {
     const user = await callerFor(ctx, deviceId);
     if (!user || !isVerifiedHost(user) || !await ctx.db.get(eventId)) return { canClaim: false, claim: null };
     const companies = await verifiedMemberships(ctx, user);
     const claims = (await Promise.all(companies.map((c) => claimOf(ctx, c._id, eventId)))).filter((c) => c !== null);
     const best = claims.find(isApproved) ?? claims[0] ?? null;
+    const company = best ? companies.find((c) => c._id === best.companyId) : undefined;
     return {
       canClaim: claims.length < companies.length,
-      claim: best ? { claimId: best._id, status: isApproved(best) ? "approved" as const : "pending" as const, companyId: best.companyId } : null,
+      claim: best ? {
+        claimId: best._id, status: isApproved(best) ? "approved" as const : "pending" as const, companyId: best.companyId,
+        canReview: canReviewClaim(best, company, user),
+      } : null,
     };
   },
 });
@@ -229,7 +232,7 @@ export const eventMatches = query({
   args: { deviceId: v.string(), eventId: v.id("events"), companyId: v.id("companies") },
   returns: v.object({
     event: eventSummary,
-    matches: v.array(v.object({ ...profileView.fields, attended: v.boolean(), interested: v.boolean(), mutual: v.boolean() })),
+    matches: v.array(v.object({ ...profileView.fields, attended: v.boolean(), interested: v.boolean(), mutual: v.boolean(), blockedUntil: v.union(v.number(), v.null()) })),
   }),
   handler: async (ctx, { deviceId, eventId, companyId }) => {
     const user = await requireCaller(ctx, deviceId);
@@ -239,27 +242,30 @@ export const eventMatches = query({
     if (!event) return fail("not_found", "Event not found");
     if (!isApproved(await claimOf(ctx, companyId, eventId))) fail("forbidden", "Claim this event and get it approved first");
 
-    const rows = new Map<Id<"users">, { talent: Doc<"users">; attended: boolean; live: Doc<"connections"> | null }>();
+    const now = Date.now();
+    const rows = new Map<Id<"users">, { talent: Doc<"users">; attended: boolean; live: Doc<"connections"> | null; blockedUntil: number | null }>();
     const attendance = await ctx.db.query("attendance").withIndex("by_event", (q) => q.eq("eventId", eventId)).take(MAX_EVENT_TALENT);
     for (const record of attendance) {
       if (!wentTo(record, event)) continue;
       const talent = await ctx.db.get(record.userId);
       if (!talent || talent.role !== "student" || await isMember(ctx, companyId, talent._id)) continue;
-      rows.set(talent._id, { talent, attended: true, live: (await pairRows(ctx, talent._id, companyId)).find(isLive) ?? null });
+      const pair = await pairRows(ctx, talent._id, companyId);
+      rows.set(talent._id, { talent, attended: true, live: pair.find(isLive) ?? null, blockedUntil: blockedUntil(pair, "company", now) });
     }
     const linked = (await ctx.db.query("connections").withIndex("by_event", (q) => q.eq("eventId", eventId)).take(MAX_ROWS))
       .filter((c) => c.companyId === companyId && isLive(c));
     for (const connection of linked) {
       if (rows.has(connection.talentUserId)) continue;
       const talent = await ctx.db.get(connection.talentUserId);
-      if (talent) rows.set(talent._id, { talent, attended: false, live: connection });
+      if (talent) rows.set(talent._id, { talent, attended: false, live: connection, blockedUntil: blockedUntil(await pairRows(ctx, talent._id, companyId), "company", now) });
     }
 
     const rank = (live: Doc<"connections"> | null) =>
       !live ? 3 : live.status === "accepted" ? 0 : live.initiatedBy === "talent" ? 1 : 2;
     const matches = [...rows.values()]
       .sort((a, b) => rank(a.live) - rank(b.live) || (a.talent.name ?? "").localeCompare(b.talent.name ?? "") || a.talent._id.localeCompare(b.talent._id))
-      .map(({ talent, attended, live }) => ({
+      .map(({ talent, attended, live, blockedUntil }) => ({
+        blockedUntil,
         ...toProfile(talent, live),
         attended,
         interested: live !== null && (live.initiatedBy === "talent" || live.status === "accepted"),

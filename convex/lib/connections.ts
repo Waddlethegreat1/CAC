@@ -94,6 +94,9 @@ export const isApproved = (claim: Doc<"event_hosts"> | null) => claim !== null &
 
 export const hosts = async (ctx: QueryCtx, companyId: Id<"companies">, eventId: Id<"events">) => isApproved(await claimOf(ctx, companyId, eventId));
 
+export const canReviewClaim = (claim: Doc<"event_hosts">, company: Doc<"companies"> | null | undefined, user: Doc<"users">) =>
+  !isApproved(claim) && claim.claimedBy !== user._id && company?.domain !== undefined && company.domain === user.workDomain;
+
 export const hostSlugs = (event: Doc<"events">) => [...event.hosts, ...(event.organizer ? [event.organizer] : [])].map(slugify);
 
 export function onDomain(event: Doc<"events">, domain: string) {
