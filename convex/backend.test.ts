@@ -37,6 +37,7 @@ describe("backend", () => {
     expect((await t.query(api.interests.list, {})).map((i) => i.slug)).toContain("hackathons");
     const feeds = await t.run((ctx) => ctx.db.query("feeds").collect());
     expect(new Set(feeds.map((f) => f.source))).toEqual(new Set(["devpost", "luma", "mlh"]));
+    expect(feeds.filter((f) => f.source === "mlh").map((f) => f.enabled)).toEqual([false]);
 
     expect(await t.query(api.feed.ranked, { deviceId: student.deviceId })).toBeNull();
     await t.mutation(api.users.upsert, student);
