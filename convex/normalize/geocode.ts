@@ -7,6 +7,8 @@ import { throttledFetch } from "../lib/http";
 
 export const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
 export const MISS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const GEOCODE_RETRIES = 3;
+export const BAY_AREA_VIEWBOX = "-123.1,38.4,-121.4,36.85";
 
 const geoHit = v.object({ lat: v.number(), lng: v.number(), city: v.optional(v.string()) });
 
@@ -43,8 +45,13 @@ export const putCached = internalMutation({
   },
 });
 
-async function nominatim(ctx: ActionCtx, query: string): Promise<GeoHit | null | undefined> {
-  const url = `${NOMINATIM_URL}?${new URLSearchParams({ q: query, format: "jsonv2", limit: "1", addressdetails: "1" })}`;
+async function nominatim(ctx: ActionCtx, query: string, bayAreaOnly: boolean): Promise<GeoHit | null | undefined> {
+  const params = new URLSearchParams({ q: query, format: "jsonv2", limit: "1", addressdetails: "1" });
+  if (bayAreaOnly) {
+    params.set("viewbox", BAY_AREA_VIEWBOX);
+    params.set("bounded", "1");
+  }
+  const url = `${NOMINATIM_URL}?${params}`;
   const res = await throttledFetch(ctx, url, "application/json");
   if (!res.ok) return undefined;
   const [top] = (await res.json()) as NominatimResult[];
@@ -56,13 +63,33 @@ async function nominatim(ctx: ActionCtx, query: string): Promise<GeoHit | null |
   return city ? { lat, lng, city } : { lat, lng };
 }
 
+async function withRetries<T>(fn: () => Promise<T | undefined>): Promise<T | undefined> {
+  for (let attempt = 0; attempt < GEOCODE_RETRIES; attempt++) {
+    const result = await fn().catch(() => undefined);
+    if (result !== undefined) return result;
+    await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+  }
+  return undefined;
+}
+
 export function nominatimGeocoder(ctx: ActionCtx): Geocoder {
   const memo = new Map<string, Promise<GeoHit | null>>();
   const resolve = async (key: string, query: string) => {
     const cached = fromCache(await ctx.runQuery(internal.normalize.geocode.getCached, { key }), Date.now());
     if (cached !== undefined) return cached;
-    const hit = await nominatim(ctx, query).catch(() => undefined);
-    if (hit === undefined) return null;
+    const segments = query.split(",").map((s) => s.trim()).filter(Boolean);
+    const attempts = [...new Set([query, segments.slice(1).join(", "), segments.slice(-2).join(", ")])].filter(Boolean);
+    let hit: GeoHit | null = null;
+    search: for (const attempt of attempts) {
+      for (const bayAreaOnly of [true, false]) {
+        const result = await withRetries(() => nominatim(ctx, attempt, bayAreaOnly));
+        if (result === undefined) return null;
+        if (result) {
+          hit = result;
+          break search;
+        }
+      }
+    }
     await ctx.runMutation(internal.normalize.geocode.putCached, { key, hit });
     return hit;
   };
