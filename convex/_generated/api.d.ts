@@ -10,8 +10,11 @@
 
 import type * as adapters_devpost from "../adapters/devpost.js";
 import type * as adapters_fixture from "../adapters/fixture.js";
+import type * as adapters_ical from "../adapters/ical.js";
 import type * as adapters_index from "../adapters/index.js";
+import type * as adapters_jsonld from "../adapters/jsonld.js";
 import type * as adapters_luma from "../adapters/luma.js";
+import type * as adapters_mlh from "../adapters/mlh.js";
 import type * as crons from "../crons.js";
 import type * as events from "../events.js";
 import type * as feed from "../feed.js";
@@ -42,8 +45,11 @@ import type {
 declare const fullApi: ApiFromModules<{
   "adapters/devpost": typeof adapters_devpost;
   "adapters/fixture": typeof adapters_fixture;
+  "adapters/ical": typeof adapters_ical;
   "adapters/index": typeof adapters_index;
+  "adapters/jsonld": typeof adapters_jsonld;
   "adapters/luma": typeof adapters_luma;
+  "adapters/mlh": typeof adapters_mlh;
   crons: typeof crons;
   events: typeof events;
   feed: typeof feed;

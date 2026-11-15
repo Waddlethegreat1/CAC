@@ -3,6 +3,9 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { internal } from "./_generated/api";
 import schema from "./schema";
 import { isAllowed } from "./lib/robots";
+import { resolveAdapter } from "./adapters";
+import { icalAdapter } from "./adapters/ical";
+import { jsonldAdapter } from "./adapters/jsonld";
 import stubEvents from "../fixtures/fixture/events.json";
 
 const modules = import.meta.glob(["./**/*.ts", "./**/*.js", "!./**/*.test.ts", "!./**/*.d.ts"]);
@@ -42,6 +45,14 @@ describe("seed loader", () => {
     expect(await t.mutation(internal.feeds.seed, { feeds: [], disableSources: ["luma"] })).toMatchObject({ disabled: 1 });
     const luma = await t.run((ctx) => ctx.db.query("feeds").withIndex("by_source", (q) => q.eq("source", "luma")).unique());
     expect(luma?.enabled).toBe(false);
+  });
+});
+
+describe("adapter registry", () => {
+  test("resolves by source first, then by tier", () => {
+    expect(resolveAdapter({ source: "ical", tier: "feed" })).toBe(icalAdapter);
+    expect(resolveAdapter({ source: "html", tier: "JSON-LD" })).toBe(jsonldAdapter);
+    expect(resolveAdapter({ source: "html", tier: "extraction" })).toBeUndefined();
   });
 });
 
