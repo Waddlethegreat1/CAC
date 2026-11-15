@@ -146,6 +146,21 @@ export default defineSchema({
     order: v.number(),
   }).index("by_slug", ["slug"]),
 
+  link_submissions: defineTable({
+    deviceId: v.string(),
+    url: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("added"),
+      v.literal("duplicate"),
+      v.literal("needs_review"),
+      v.literal("rejected"),
+    ),
+    eventIds: v.array(v.id("events")),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_device", ["deviceId", "createdAt"]),
+
   saves: defineTable({
     userId: v.id("users"),
     eventId: v.id("events"),
