@@ -9,6 +9,7 @@
  */
 
 import type * as adapters_devpost from "../adapters/devpost.js";
+import type * as adapters_eventbrite from "../adapters/eventbrite.js";
 import type * as adapters_fixture from "../adapters/fixture.js";
 import type * as adapters_ical from "../adapters/ical.js";
 import type * as adapters_index from "../adapters/index.js";
@@ -63,6 +64,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "adapters/devpost": typeof adapters_devpost;
+  "adapters/eventbrite": typeof adapters_eventbrite;
   "adapters/fixture": typeof adapters_fixture;
   "adapters/ical": typeof adapters_ical;
   "adapters/index": typeof adapters_index;
