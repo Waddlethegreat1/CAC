@@ -19,14 +19,16 @@ test("dedupe rekeys followups, prefers survivor collisions, and invalidates all 
   await t.action(api.prep.generateFollowup, { deviceId: "one", eventId: drop, recipient: "Drop recipient" });
   await t.action(api.prep.generateFollowup, { deviceId: "two", eventId: drop, recipient: "Second recipient" });
   await t.run(async (ctx) => {
+    await ctx.db.patch(keep, { title: "Merged Demo" });
     await rekeyPrepReferences(ctx, drop, keep);
     await ctx.db.delete(drop);
   });
   expect(await t.run((ctx) => ctx.db.query("prep_briefings").collect())).toEqual([]);
   const rows = await t.run((ctx) => ctx.db.query("prep_followups").collect());
   expect(rows.map((row) => row.value.recipient).sort()).toEqual(["Keep recipient", "Second recipient"]);
-  expect(rows.every((row) => row.eventId === keep && row.fingerprint === "")).toBe(true);
-  expect(await t.query(api.prep.get, { deviceId: "one", eventId: keep })).toEqual({ briefing: null, followup: null });
+  expect(rows.every((row) => row.eventId === keep && row.value.email.includes("Merged Demo"))).toBe(true);
+  expect(await t.query(api.prep.get, { deviceId: "one", eventId: keep })).toMatchObject({ briefing: null, followup: { recipient: "Keep recipient" } });
+  expect(await t.query(api.prep.get, { deviceId: "two", eventId: keep })).toMatchObject({ briefing: null, followup: { recipient: "Second recipient" } });
   await t.run((ctx) => rekeyPrepReferences(ctx, drop, keep));
   await t.run((ctx) => rekeyPrepReferences(ctx, keep, keep));
   expect(await t.run((ctx) => ctx.db.query("prep_followups").collect())).toHaveLength(2);
