@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "convex/react";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "@/components/button";
@@ -169,13 +169,17 @@ function ProfileForm({ user }: { user: User }) {
 
       <Text style={styles.group}>Location</Text>
       <View style={styles.card}>
-        <View style={styles.prow}>
+        <Pressable
+          testID="profile-area"
+          accessibilityRole="button"
+          accessibilityState={{ expanded: areaOpen }}
+          onPress={() => setAreaOpen(!areaOpen)}
+          style={styles.prow}
+        >
           <Text style={styles.body}>Area</Text>
-          <Text testID="profile-area" style={styles.value} onPress={() => setAreaOpen(!areaOpen)}>
-            {user.locationSource === "device" ? `Near ${user.city}` : user.city}
-          </Text>
+          <Text style={styles.value}>{user.locationSource === "device" ? `Near ${user.city}` : user.city}</Text>
           <Icon name={areaOpen ? "chevron-left" : "chevron-right"} size={16} color={colors.subtle} />
-        </View>
+        </Pressable>
         {areaOpen ? (
           <View style={styles.areaPicker}>
             <Button

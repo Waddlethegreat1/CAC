@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { api, internal } from "./_generated/api";
 import type { RawEvent } from "./lib/rawEvent";
+import { INVESTORS_LIKELY_MIN } from "./lib/ranking";
 import { normalize } from "./normalize";
 import schema from "./schema";
 
@@ -36,7 +37,8 @@ describe("backend", () => {
     expect(seeded).toBeGreaterThanOrEqual(20);
     expect((await t.query(api.interests.list, {})).map((i) => i.slug)).toContain("hackathons");
     const feeds = await t.run((ctx) => ctx.db.query("feeds").collect());
-    expect(new Set(feeds.map((f) => f.source))).toEqual(new Set(["devpost", "luma"]));
+    expect(new Set(feeds.map((f) => f.source))).toEqual(new Set(["devpost", "luma", "mlh"]));
+    expect(feeds.filter((f) => f.source === "mlh").map((f) => f.enabled)).toEqual([false]);
 
     expect(await t.query(api.feed.ranked, { deviceId: student.deviceId })).toBeNull();
     await t.mutation(api.users.upsert, student);
@@ -45,7 +47,7 @@ describe("backend", () => {
     expect(feed?.events[0].matched.length).toBeGreaterThan(0);
 
     const investorOnly = await t.query(api.feed.ranked, { deviceId: student.deviceId, filter: "investors" });
-    expect(investorOnly?.events.every((e) => e.investorScore >= 60)).toBe(true);
+    expect(investorOnly?.events.every((e) => e.investorScore >= INVESTORS_LIKELY_MIN)).toBe(true);
   });
 
   test("store upserts by source and sourceId", async () => {
