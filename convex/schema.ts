@@ -24,7 +24,9 @@ export const audience = v.union(
   v.literal("general"),
 );
 
-export const role = v.union(v.literal("student"), v.literal("investor"));
+export const role = v.union(v.literal("student"), v.literal("investor"), v.literal("host"));
+export const verificationMode = v.union(v.literal("email"), v.literal("dev"));
+export const claimStatus = v.union(v.literal("pending"), v.literal("approved"));
 
 export const companyRole = v.union(v.literal("owner"), v.literal("member"));
 export const connectionSide = v.union(v.literal("talent"), v.literal("company"));
@@ -174,6 +176,10 @@ export default defineSchema({
     linkedin: v.optional(v.string()),
     priorRoles: v.optional(v.string()),
     experience: v.optional(v.string()),
+    workEmail: v.optional(v.string()),
+    workDomain: v.optional(v.string()),
+    workEmailVerifiedAt: v.optional(v.number()),
+    workEmailVerifiedVia: v.optional(verificationMode),
     emailVerificationTime: v.optional(v.number()),
     phoneVerificationTime: v.optional(v.number()),
   })
@@ -242,7 +248,34 @@ export default defineSchema({
     createdAt: v.number(),
     verifiedAt: v.optional(v.number()),
     verifiedBy: v.optional(v.string()),
-  }).index("by_slug", ["slug"]),
+    domain: v.optional(v.string()),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_domain", ["domain"]),
+
+  company_join_requests: defineTable({
+    companyId: v.id("companies"),
+    userId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_company", ["companyId", "userId"])
+    .index("by_user", ["userId", "companyId"]),
+
+  email_verifications: defineTable({
+    userId: v.id("users"),
+    deviceId: v.string(),
+    email: v.string(),
+    domain: v.string(),
+    codeHash: v.string(),
+    salt: v.string(),
+    mode: verificationMode,
+    attempts: v.number(),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId", "createdAt"])
+    .index("by_device", ["deviceId", "createdAt"])
+    .index("by_email", ["email", "createdAt"]),
 
   company_members: defineTable({
     companyId: v.id("companies"),
@@ -266,6 +299,7 @@ export default defineSchema({
     eventId: v.id("events"),
     companyId: v.id("companies"),
     claimedBy: v.id("users"),
+    status: v.optional(claimStatus),
     createdAt: v.number(),
   })
     .index("by_event", ["eventId", "companyId"])

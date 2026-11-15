@@ -39,7 +39,11 @@ export const upsert = mutation({
       .query("users")
       .withIndex("by_device", (q) => q.eq("deviceId", args.deviceId))
       .unique();
-    const doc = { ...args, radiusKm: args.radiusKm ?? existing?.radiusKm, updatedAt: Date.now() };
+    const doc = {
+      ...args, radiusKm: args.radiusKm ?? existing?.radiusKm, updatedAt: Date.now(),
+      workEmail: existing?.workEmail, workDomain: existing?.workDomain,
+      workEmailVerifiedAt: existing?.workEmailVerifiedAt, workEmailVerifiedVia: existing?.workEmailVerifiedVia,
+    };
     for (const field of CONTACT_FIELDS) {
       const raw = args[field];
       if (raw === undefined) {
