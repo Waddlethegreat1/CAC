@@ -17,6 +17,26 @@ export const userFor = (ctx: QueryCtx, deviceId: string) =>
 export const recordFor = (ctx: QueryCtx, userId: Id<"users">, eventId: Id<"events">) =>
   ctx.db.query("attendance").withIndex("by_user_event", (q) => q.eq("userId", userId).eq("eventId", eventId)).unique();
 
+export async function ensureUser(ctx: MutationCtx, deviceId: string) {
+  const existing = await userFor(ctx, deviceId);
+  if (existing) return existing._id;
+  return ctx.db.insert("users", {
+    deviceId, role: "student", interests: ["ai", "startups"], city: "San Francisco",
+    lat: 37.7749, lng: -122.4194, locationSource: "city", updatedAt: Date.now(),
+  });
+}
+
+export async function writeGoing(ctx: MutationCtx, userId: Id<"users">, eventId: Id<"events">, going: boolean) {
+  const existing = await recordFor(ctx, userId, eventId);
+  if (existing) {
+    if (existing.going !== going) await ctx.db.patch(existing._id, { going });
+    return existing._id;
+  }
+  if (!going) return null;
+  if ((await recordsFor(ctx, userId)).length >= MAX_COMMITMENTS) throw new Error("Attendance limit exceeded");
+  return ctx.db.insert("attendance", { userId, eventId, going });
+}
+
 export async function recordsFor(ctx: QueryCtx, userId: Id<"users">) {
   const records = await ctx.db.query("attendance").withIndex("by_user_event", (q) => q.eq("userId", userId)).take(MAX_COMMITMENTS + 1);
   if (records.length > MAX_COMMITMENTS) throw new Error("Attendance limit exceeded");

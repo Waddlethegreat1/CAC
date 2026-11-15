@@ -1,12 +1,40 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { internalMutation } from "./_generated/server";
-import { isFixtureUrl } from "./lib/fixtures";
+import { internalMutation, mutation } from "./_generated/server";
+import { ensureUser, writeGoing } from "./attendanceModel";
+import { isFixtureUrl, PAST_TEST_EVENT_ID, PAST_TEST_EVENT_TITLE } from "./lib/fixtures";
 import { sourcesOf } from "./normalize/dedupe";
 import { deleteEventRefs } from "./normalize/reassignEventRefs";
 
 const BATCH = 100;
+const HOUR = 3_600_000;
+const FIXTURE_SOURCE = "cac-fixtures";
+
+export const seedPastCommitment = mutation({
+  args: { deviceId: v.string() },
+  returns: v.object({ eventId: v.id("events"), commitmentId: v.id("attendance") }),
+  handler: async (ctx, { deviceId }) => {
+    if (process.env.ENABLE_TEST_FIXTURES !== "1") throw new Error("seedPastCommitment requires ENABLE_TEST_FIXTURES=1");
+    const userId = await ensureUser(ctx, deviceId);
+    const existing = await ctx.db
+      .query("events")
+      .withIndex("by_source_sourceId", (q) => q.eq("source", FIXTURE_SOURCE).eq("sourceId", PAST_TEST_EVENT_ID))
+      .unique();
+    const now = Date.now();
+    const eventId = existing?._id ?? await ctx.db.insert("events", {
+      title: PAST_TEST_EVENT_TITLE,
+      description: "Synthetic test data for CAC end-to-end tests, not a real event. A past evening hack night used to exercise the check-in card.",
+      startTime: now - 28 * HOUR, endTime: now - 26 * HOUR, timezone: "America/Los_Angeles",
+      venue: "CAC Test Venue", address: "1 Market St, San Francisco, CA 94105", lat: 37.7941, lng: -122.3951,
+      city: "San Francisco", isOnline: false, url: `https://example.com/${PAST_TEST_EVENT_ID}`,
+      source: FIXTURE_SOURCE, sourceId: PAST_TEST_EVENT_ID, organizer: "CAC test fixtures", hosts: [], tags: ["test"],
+      eventType: "hackathon", audience: ["students"], investorScore: 0, investorSignals: [], lastSeenAt: now, synthetic: true,
+    });
+    const commitmentId = (await writeGoing(ctx, userId, eventId, true))!;
+    return { eventId, commitmentId };
+  },
+});
 
 export const purgeSynthetic = internalMutation({
   args: {},
