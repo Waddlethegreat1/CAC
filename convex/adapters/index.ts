@@ -1,10 +1,12 @@
 import type { Adapter } from "../lib/adapter";
 import { devpostAdapter } from "./devpost";
 import { lumaAdapter } from "./luma";
+import { mlhAdapter } from "./mlh";
 
 export const ADAPTERS: Record<string, Adapter> = {
   [devpostAdapter.source]: devpostAdapter,
   [lumaAdapter.source]: lumaAdapter,
+  [mlhAdapter.source]: mlhAdapter,
 };
 
 export const DEFAULT_FEEDS = [
@@ -20,6 +22,7 @@ export const DEFAULT_FEEDS = [
     url: "https://devpost.com/api/hackathons?status[]=upcoming&status[]=open&challenge_type[]=online",
     intervalMinutes: 720,
   },
+  { source: "mlh", name: "MLH 2027 season", url: "https://www.mlh.com/seasons/2027/events", intervalMinutes: 720 },
   { source: "luma", name: "Luma San Francisco", url: "https://luma.com/sf", intervalMinutes: 180 },
   { source: "luma", name: "Luma: The AI Collective", url: "https://luma.com/genai-collective", intervalMinutes: 360 },
   { source: "luma", name: "Luma: Claude Community Events", url: "https://luma.com/claudecommunity", intervalMinutes: 360 },

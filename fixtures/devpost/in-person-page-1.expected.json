@@ -134,14 +134,13 @@
     "source": "devpost",
     "sourceId": "32106",
     "title": "ESE1110 Fall 2026",
-    "description": "In-person hackathon by UPenn ESE. Themes: Open Ended. 47 registered.",
+    "description": "Online hackathon by UPenn ESE. Themes: Open Ended. 47 registered.",
     "url": "https://ese1110f26.devpost.com/",
     "startsAt": "2026-11-12T09:00:00-08:00",
     "endsAt": "2026-11-19T23:59:00-08:00",
     "timezone": "America/Los_Angeles",
     "location": {
-      "online": false,
-      "name": "virtual"
+      "online": true
     },
     "organizer": "UPenn ESE",
     "imageUrl": "https://assets.devpost.com/assets/defaults/thumbnail-placeholder-8c916ef4da99a222ce6ece077c71c7e282f071f830747b2abb5718018cbfa699.gif",
