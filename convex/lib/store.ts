@@ -3,6 +3,7 @@ import type { MutationCtx } from "../_generated/server";
 import { DEFAULT_FEEDS } from "../adapters";
 import type { NormalizedEvent } from "../normalize";
 import { INTERESTS } from "./interests";
+import { scoutingFields } from "./scouting";
 import type { RawEvent } from "./rawEvent";
 
 export async function upsertRawListing(ctx: MutationCtx, raw: RawEvent, feedId?: Id<"feeds">) {
@@ -23,7 +24,7 @@ export async function upsertEvent(ctx: MutationCtx, event: NormalizedEvent, rawL
     .query("events")
     .withIndex("by_source_sourceId", (q) => q.eq("source", event.source).eq("sourceId", event.sourceId))
     .unique();
-  const doc = { ...event, rawListingId, lastSeenAt: Date.now() };
+  const doc = { ...event, ...scoutingFields(event), rawListingId, lastSeenAt: Date.now() };
   if (existing) {
     await ctx.db.replace(existing._id, doc);
     return existing._id;
