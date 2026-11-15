@@ -1,16 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
-import type { MutationCtx } from "./_generated/server";
-import { recordFor, recordsFor, MAX_COMMITMENTS, saveResponse, userFor } from "./attendanceModel";
-
-async function ensureUser(ctx: MutationCtx, deviceId: string) {
-  const existing = await userFor(ctx, deviceId);
-  if (existing) return existing._id;
-  return ctx.db.insert("users", {
-    deviceId, role: "student", interests: ["ai", "startups"], city: "San Francisco",
-    lat: 37.7749, lng: -122.4194, locationSource: "city", updatedAt: Date.now(),
-  });
-}
+import { ensureUser, recordFor, recordsFor, MAX_COMMITMENTS, saveResponse } from "./attendanceModel";
 
 export const run = internalMutation({
   args: { deviceId: v.optional(v.string()) },

@@ -44,7 +44,8 @@
         {
           "locationWhenInUsePermission": "Scout uses your location to sort nearby events by distance."
         }
-      ]
+      ],
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true,

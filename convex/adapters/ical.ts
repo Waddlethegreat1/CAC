@@ -1,5 +1,6 @@
 import ICAL from "ical.js";
 import type { Adapter } from "../lib/adapter";
+import { BAY_AREA_CITIES, foldText } from "../lib/geo";
 import type { RawEvent, RawLocation } from "../lib/rawEvent";
 import { toZonedIso, zonedToUtc } from "../lib/time";
 
@@ -8,6 +9,9 @@ const MAX_OCCURRENCES_SCANNED = 50_000;
 const DAY_MS = 86_400_000;
 const ONLINE_TEXT = /^(online( event| only)?|virtual( event)?|zoom( webinar| meeting| call)?|webinar|google meet|(ms |microsoft )?teams|livestream|remote)$/i;
 const PLACEHOLDER_TEXT = /\b(sign in to|log in to|register to see|check (the )?event page|will be (shared|sent|provided)|to be (announced|determined|confirmed))\b|^(tba|tbd|tbc)$/i;
+const STREET_ADDRESS = /^(\d+[a-z]?(-\d+)?\s+\S|p\.?\s?o\.? box\b|suite\b|ste\.?\s|unit\s|room\s|floor\s|\d+(st|nd|rd|th) floor\b)/i;
+const REGION_OR_POSTCODE = /^([a-z]{2}(\s+\d{5}(-\d{4})?)?|\d{5}(-\d{4})?|usa|us|united states( of america)?|california|canada|united kingdom|uk)$/i;
+const CITY_NAMES = new Set(BAY_AREA_CITIES.map((c) => foldText(c.name)));
 const ONLINE_MEETING_HOST = /(^|\.)(zoom\.us|meet\.google\.com|teams\.microsoft\.com|teams\.live\.com|webex\.com|youtube\.com|youtu\.be|twitch\.tv|discord\.gg|discord\.com)$/i;
 
 const TIMEZONE_ALIASES: Record<string, string> = {
@@ -131,12 +135,23 @@ function toLocation(text: string | undefined, isUrl: boolean, geo: unknown): Raw
   if (isUrl && ONLINE_MEETING_HOST.test(new URL(text!).hostname)) return { online: true };
   if (text && ONLINE_TEXT.test(text)) return { online: true };
   const location: RawLocation = { online: false };
-  if (text && !isUrl && !PLACEHOLDER_TEXT.test(text)) location.address = text;
+  if (text && !isUrl && !PLACEHOLDER_TEXT.test(text)) {
+    location.address = text;
+    const venue = venueOf(text);
+    if (venue) location.name = venue;
+  }
   if (Array.isArray(geo) && geo.length === 2 && geo.every((n) => typeof n === "number" && Number.isFinite(n))) {
     location.lat = geo[0];
     location.lng = geo[1];
   }
   return location;
+}
+
+export function venueOf(text: string): string | undefined {
+  const [first, second] = text.split(/\s*[,\n]\s*/).map((part) => part.trim());
+  if (!first || STREET_ADDRESS.test(first) || REGION_OR_POSTCODE.test(first) || CITY_NAMES.has(foldText(first))) return undefined;
+  if (second !== undefined && REGION_OR_POSTCODE.test(second)) return undefined;
+  return first;
 }
 
 function toInstant(time: ICAL.Time, tzid: string | undefined, calendarTz: string): number {

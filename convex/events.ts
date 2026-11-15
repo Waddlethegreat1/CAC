@@ -16,6 +16,6 @@ export const search = query({
       .query("events")
       .withSearchIndex("search_title", (s) => s.search("title", q))
       .take(40);
-    return results.filter((e) => (e.endTime ?? e.startTime + DEFAULT_DURATION) >= now);
+    return results.filter((e) => e.hiddenAt === undefined && (e.endTime ?? e.startTime + DEFAULT_DURATION) >= now);
   },
 });

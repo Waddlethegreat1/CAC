@@ -1,0 +1,42 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: 748bad05-48fe-4c57-bbc7-d8c61b74c2aa
+    remote_version: 3
+    local_version: 3
+    last_synced_at: "2026-11-15T19:01:04Z"
+    checksum: c4c774d01e6c7c933a2ff0b72a28be406d716c3e8049f0f2609dd900278a4464
+test:
+    metadata:
+        name: student-onboarding-feed
+        platform: ios
+        tags:
+            - e2e
+            - student
+    build:
+        name: Scout iOS
+    blocks:
+        - type: validation
+          step_description: A welcome screen says "Be in the room when it happens" and shows a "Get started" button.
+        - type: instructions
+          step_description: Tap the "Get started" button.
+        - type: validation
+          step_description: The onboarding screen says "Find the rooms where startups happen" and offers an "I'm a student" option and an "I'm an investor" option.
+        - type: instructions
+          step_description: Tap the "I'm a student" option.
+        - type: validation
+          step_description: The "I'm a student" option is shown as selected.
+        - type: instructions
+          step_description: Tap the Continue button at the bottom of the screen.
+        - type: validation
+          step_description: A screen titled "What are you into" shows interest chips, and Hackathons, Pitch competitions and Networking are already selected.
+        - type: instructions
+          step_description: Tap the "AI & ML" interest chip, then tap Continue.
+        - type: validation
+          step_description: A screen titled "Where should we look" shows a "Use my location" button, a list of Bay Area areas, and a "How far will you go" distance choice.
+        - type: instructions
+          step_description: Tap the "Palo Alto" area chip, then tap the "Show my events" button.
+        - type: validation
+          step_description: The feed shows a "For you" heading with a location pill that reads "Palo Alto", filter chips including "All", "Investors likely" and "This week", and at least three event cards under date section headings, each with a date tile and a title.
+        - type: validation
+          step_description: A tab bar at the bottom shows Feed, Saved and Profile tabs, with Feed selected, and no Investor tab.

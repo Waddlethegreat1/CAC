@@ -1,5 +1,11 @@
 # Revyl Test Definition
 
+_meta:
+    remote_id: b82483f0-91b5-4a12-925c-dc481b6112f2
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-15T20:26:22Z"
+    checksum: 9e492569050e475d701c47197fc3fdbc0540aecea649a1659b114c1285604735
 test:
     metadata:
         name: paste-a-link
@@ -9,6 +15,10 @@ test:
     build:
         name: Scout iOS
     blocks:
+        - type: validation
+          step_description: A welcome screen says "Be in the room when it happens" and shows a "Get started" button.
+        - type: instructions
+          step_description: Tap the "Get started" button.
         - type: validation
           step_description: The onboarding screen says "Find the rooms where startups happen" and shows an "I'm a student" option.
         - type: instructions

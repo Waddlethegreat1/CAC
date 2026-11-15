@@ -1,0 +1,46 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: 8e09284e-99b2-44ae-99e5-65b872e0f5c8
+    remote_version: 4
+    local_version: 4
+    last_synced_at: "2026-11-15T19:01:17Z"
+    checksum: 5ce331b68ad505609123874f9fd2f2b1416600b47587f5d70e945c0c22595578
+test:
+    metadata:
+        name: investor-onboarding-home
+        platform: ios
+        tags:
+            - e2e
+            - investor
+    build:
+        name: Scout iOS
+    blocks:
+        - type: validation
+          step_description: A welcome screen says "Be in the room when it happens" and shows a "Get started" button.
+        - type: instructions
+          step_description: Tap the "Get started" button.
+        - type: validation
+          step_description: The onboarding screen says "Find the rooms where startups happen" and offers an "I'm a student" option and an "I'm an investor" option.
+        - type: instructions
+          step_description: Tap the "I'm an investor" option, then tap Continue.
+        - type: validation
+          step_description: A screen titled "What are you into" shows interest chips, and Pitch competitions, VC & fundraising and AI & ML are already selected.
+        - type: instructions
+          step_description: Tap Continue.
+        - type: instructions
+          step_description: Tap the "San Francisco" area chip, then tap the "Show my events" button.
+        - type: validation
+          step_description: The app shows a home screen, and the bottom tab bar includes an Investor tab beside Feed, Saved and Profile.
+        - type: instructions
+          step_description: Tap the Investor tab in the bottom tab bar.
+        - type: validation
+          step_description: 'A screen titled "Scouting" reads "Investor mode: student events by investor score", shows School, Type and Date filter rows, and lists at least one student event.'
+        - type: instructions
+          step_description: Tap the first student event in the list below the filters.
+        - type: validation
+          step_description: An investor event detail screen shows the event title, an investor signal score, and a student turnout section.
+        - type: instructions
+          step_description: Tap the back button at the top left.
+        - type: validation
+          step_description: The "Scouting" screen is visible again.

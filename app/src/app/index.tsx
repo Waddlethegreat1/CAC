@@ -19,7 +19,7 @@ export default function Index() {
       </View>
     );
   }
-  return <Redirect href={profile ? "/feed" : "/onboarding"} />;
+  return <Redirect href={profile ? "/feed" : "/welcome"} />;
 }
 
 const styles = StyleSheet.create({

@@ -77,17 +77,36 @@ pnpm lint
 
 ## Revyl tests
 
-Revyl config lives in `app/.revyl/config.yaml` (from `revyl init`), with the iOS app `Scout iOS` linked to the `preview` and `development` profiles. The smoke test is `app/.revyl/tests/smoke-onboarding-feed.yaml`: onboarding as a student, the feed showing events near Palo Alto, event detail, save, and Open link.
+Revyl config lives in `app/.revyl/config.yaml`, with the iOS app `Scout iOS` linked to the `preview` and `development` profiles. Each user flow has one test in `app/.revyl/tests/`, and all of them are grouped in the `scout-e2e` Revyl workflow:
+
+| Test | Flow |
+| --- | --- |
+| `smoke-onboarding-feed` | Quick smoke: onboarding, feed, detail, save, open link |
+| `student-onboarding-feed` | Student onboarding through to the feed and tab bar |
+| `feed-filters` | The Investors likely, This week and All filter chips |
+| `event-detail-save-unsave` | Event detail, save, then unsave |
+| `saved-screen` | Saved tab: empty state, a saved event, unsave with Undo |
+| `profile-edit` | Profile tab: edit interests, area and distance; feed follows |
+| `investor-onboarding-home` | Investor onboarding, the Scouting tab, investor event detail |
+| `paste-a-link` | Add an event by link: validation errors, then the dev fixture `https://nautical-sheep-358.convex.site/fixtures/scout-test-event` (needs `ENABLE_TEST_FIXTURES=1` on the deployment) |
+
+Most tests start with the shared `onboard-student` module (`app/.revyl/modules/`), which onboards a fresh install as a student in Palo Alto.
 
 ```bash
-curl -fsSL https://revyl.com/install.sh | sh
+curl -fsSL https://revyl.com/install.sh | sh   # then: export PATH=$HOME/.revyl/bin:$PATH
+export REVYL_API_KEY=...                        # or: revyl auth login
 cd app
-revyl build --profile preview --platform ios --env EXPO_PUBLIC_CONVEX_URL=https://<name>.convex.cloud
-revyl test run smoke-onboarding-feed
-revyl dev --platform ios             # hot-reload dev loop on a cloud simulator
+revyl build --profile preview --platform ios
+revyl workflow run scout-e2e                    # the whole suite (2 devices at once on the current plan)
+revyl test run feed-filters                     # one test
+revyl test share feed-filters                   # public link to the latest report
 ```
 
-Release builds bundle the JS, so pass the Convex URL at build time with `--env`. After editing a test YAML: `revyl test push smoke-onboarding-feed --force`.
+Release builds bundle the JS, so rebuild after any app change. The Convex URL comes from `build.env` in the config; pass `--env EXPO_PUBLIC_CONVEX_URL=...` to point a build at another deployment. A backend-only change needs only a rerun. To keep the copies saved in Revyl in step for dashboard runs, run `revyl test push <name> --force` after editing a test, and `revyl module update onboard-student --from-file .revyl/modules/onboard-student.yaml` after editing the module.
+
+Pull requests run on Revyl itself, with no GitHub Actions secret needed. The Revyl GitHub App is installed on this repo, and the `pr_review` block in `app/.revyl/config.yaml` builds every non-draft PR that touches `app/` with the `pull-request` profile. It then runs the `scout-e2e` workflow against that build and posts a Proof of changes comment on the PR. Draft PRs are skipped until they're marked ready. Comment `@revyl proof` to prove a PR on demand.
+
+`run_test_definitions_from_git` is on, so runs use the test and module files on the PR's own branch. Edit the YAML in the repo, not in the Revyl dashboard. Locally, `revyl test run <name> --from-checkout` runs your uncommitted files. After a change to `pr_review`, run `revyl config validate`, then `revyl config push`; once this file is on `main`, Git owns the published config.
 
 ## Sources
 
