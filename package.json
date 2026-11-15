@@ -12,7 +12,8 @@
     "lint": "pnpm --filter app lint"
   },
   "dependencies": {
-    "convex": "^1.50.0"
+    "convex": "^1.50.0",
+    "ical.js": "^2.2.1"
   },
   "devDependencies": {
     "@edge-runtime/vm": "^5.0.0",
