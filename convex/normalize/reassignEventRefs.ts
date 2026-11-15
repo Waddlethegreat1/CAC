@@ -81,4 +81,5 @@ export async function deleteEventRefs(ctx: MutationCtx, eventId: Id<"events">) {
   const records = groups.flat();
   if (records.length > MAX_MERGE_RECORDS) throw new Error("Event reference cleanup exceeds transaction limit");
   for (const record of records) await ctx.db.delete(record._id);
+  return { saves: groups[0].length };
 }

@@ -1,5 +1,5 @@
 import { convexTest } from "convex-test";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import schema from "./schema";
@@ -34,6 +34,37 @@ async function setup() {
 }
 
 describe("attendance across duplicate-event backfills", () => {
+  test("fixture purge deletes attendance and totals transactionally without touching real event feedback", async () => {
+    const { t, ids: [realId, syntheticId], user, attendance } = await setup();
+    const userId = await user("purge-reviewer");
+    await attendance(userId, realId, { attended: true, rating: 4, investors: "yes", note: "Keep this" });
+    await attendance(userId, syntheticId, { attended: true, rating: 5, investors: "yes", note: "Synthetic" });
+    await t.run(async (ctx) => {
+      await ctx.db.patch(syntheticId, { synthetic: true });
+      for (const eventId of [realId, syntheticId]) {
+        await ctx.db.insert("attendance_totals", { eventId, ratingCount: 1, ratingSum: eventId === realId ? 4 : 5, investorConfirmations: 1 });
+        await ctx.db.insert("saves", { userId, eventId, savedAt: 1 });
+      }
+    });
+    const before = await t.run(async (ctx) => ({
+      attendance: await ctx.db.query("attendance").withIndex("by_event", (q) => q.eq("eventId", realId)).collect(),
+      totals: await ctx.db.query("attendance_totals").withIndex("by_event", (q) => q.eq("eventId", realId)).collect(),
+      saves: await ctx.db.query("saves").withIndex("by_event", (q) => q.eq("eventId", realId)).collect(),
+    }));
+    vi.stubEnv("ENABLE_TEST_FIXTURES", "1");
+    try {
+      expect(await t.mutation(internal.fixtures.purgeSynthetic, {})).toMatchObject({ events: 1, saves: 1 });
+      expect(await t.mutation(internal.fixtures.purgeSynthetic, {})).toMatchObject({ events: 0, saves: 0 });
+    } finally { vi.unstubAllEnvs(); }
+    expect(await t.run(async (ctx) => ({
+      attendance: await ctx.db.query("attendance").collect(),
+      totals: await ctx.db.query("attendance_totals").collect(),
+      saves: await ctx.db.query("saves").collect(),
+    }))).toEqual(before);
+    expect(await t.run((ctx) => ctx.db.get(syntheticId))).toBeNull();
+    expect((await t.query(api.attendance.history, { deviceId: "purge-reviewer" })).map((r) => r.event._id)).toEqual([realId]);
+  });
+
   test("deleting event references preserves unrelated events, profiles and references and is safe to retry", async () => {
     const { t, ids: [purge, unrelated], user, attendance } = await setup();
     const sharedUser = await user("shared");
