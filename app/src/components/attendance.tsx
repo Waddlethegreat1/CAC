@@ -59,7 +59,11 @@ export function AttendancePrompt() {
   const deviceId = useDeviceId();
   const now = useAttendanceNow();
   const pending = useQuery(api.attendance.pending, deviceId ? { deviceId, now } : "skip");
-  const event = pending?.[0];
+  const [last, setLast] = useState<{ deviceId: string | null; events: typeof pending }>({ deviceId, events: pending });
+  if (last.deviceId !== deviceId || (pending !== undefined && last.events !== pending)) {
+    setLast({ deviceId, events: pending });
+  }
+  const event = (pending ?? (last.deviceId === deviceId ? last.events : undefined))?.[0];
   return event ? <CheckIn key={event._id} event={event} /> : null;
 }
 

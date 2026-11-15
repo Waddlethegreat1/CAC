@@ -28,7 +28,11 @@ test:
         - type: validation
           step_description: A compact Was it worth it form shows 1 through 5, an investors or recruiters yes/no/not sure choice, an optional one-line note, and a disabled Save my check-in button.
         - type: instructions
-          step_description: Select 5, select Yes for investors or recruiters, enter Great founder conversations in the note, and tap Save my check-in.
+          step_description: Select 5, select Yes for investors or recruiters, and enter Great founder conversations in the note. Leave the form open for at least 65 seconds, then briefly background and foreground the app without closing it.
+        - type: validation
+          step_description: The form still shows Was it worth it, with 5 and Yes selected and Great founder conversations unchanged. The timer refresh and foreground refresh did not reset the draft.
+        - type: instructions
+          step_description: Tap Save my check-in.
         - type: validation
           step_description: The check-in card disappears from the feed.
         - type: instructions
