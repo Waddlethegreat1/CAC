@@ -6,6 +6,7 @@ import { eventDoc, mergeInto } from "../lib/store";
 import { normalize } from ".";
 import { findDuplicate, mergeEvents, pickEvent, sourcesOf } from "./dedupe";
 import { cachedGeocoder } from "./geocode";
+import { reassignEventRefs } from "./reassignEventRefs";
 
 const DEFAULT_BATCH = 50;
 
@@ -15,21 +16,6 @@ async function renormalized(ctx: MutationCtx, doc: Doc<"events">) {
   const fresh = listing && (await normalize(listing.raw, { geocode: cachedGeocoder(ctx) }));
   if (!fresh || fresh.source !== doc.source || fresh.sourceId !== doc.sourceId) return current;
   return sourcesOf(doc).length > 1 ? mergeEvents(fresh, current) : fresh;
-}
-
-async function moveSaves(ctx: MutationCtx, from: Doc<"events">, to: Doc<"events">) {
-  const saves = await ctx.db
-    .query("saves")
-    .withIndex("by_event", (q) => q.eq("eventId", from._id))
-    .collect();
-  for (const save of saves) {
-    const already = await ctx.db
-      .query("saves")
-      .withIndex("by_user_event", (q) => q.eq("userId", save.userId).eq("eventId", to._id))
-      .unique();
-    if (already) await ctx.db.delete(save._id);
-    else await ctx.db.patch(save._id, { eventId: to._id });
-  }
 }
 
 export const run = internalMutation({
@@ -46,12 +32,12 @@ export const run = internalMutation({
       const event = await renormalized(ctx, doc);
       const match = await findDuplicate(ctx, event, doc._id);
       if (!match) {
-        await ctx.db.replace(doc._id, eventDoc(event, sourcesOf(doc), doc.rawListingId));
+        await ctx.db.replace(doc._id, { ...eventDoc(event, sourcesOf(doc), doc.rawListingId), hiddenAt: doc.hiddenAt });
         continue;
       }
       const [keep, drop] = match._creationTime <= doc._creationTime ? [match, { ...doc, ...event }] : [{ ...doc, ...event }, match];
       await ctx.db.replace(keep._id, mergeInto(keep, pickEvent(drop), drop.rawListingId, sourcesOf(drop)));
-      await moveSaves(ctx, drop, keep);
+      await reassignEventRefs(ctx, drop._id, keep._id);
       await ctx.db.delete(drop._id);
       merged++;
     }

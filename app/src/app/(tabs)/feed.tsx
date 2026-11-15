@@ -5,10 +5,12 @@ import { Pressable, RefreshControl, ScrollView, SectionList, StyleSheet, Text, V
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Chip } from "@/components/chip";
+import { AttendancePrompt } from "@/components/attendance";
 import { EventCard } from "@/components/event-card";
 import { EmptyState } from "@/components/feed/empty-state";
 import { Segmented } from "@/components/segmented";
 import { SkeletonCards } from "@/components/feed/skeleton";
+import { AddEventButton } from "@/components/links/add-event-button";
 import { AlertIcon, PinIcon, SearchIcon, SignalIcon } from "@/components/icons";
 import { colors, layout, radius, type } from "@/constants/theme";
 import { api } from "@/convex/_generated/api";
@@ -99,6 +101,7 @@ export default function Feed() {
             {feed?.city ?? "Nearby"} · {radius}
           </Text>
         </Pressable>
+        <AddEventButton />
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
         {FILTERS.map((f) => (
@@ -124,6 +127,7 @@ export default function Feed() {
           {events.length} events · ranked by interest, date, and distance
         </Text>
       ) : null}
+      <AttendancePrompt />
     </View>
   );
 

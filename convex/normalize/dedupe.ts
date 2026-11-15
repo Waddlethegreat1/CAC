@@ -80,17 +80,17 @@ export async function findDuplicate(ctx: Pick<QueryCtx, "db">, event: Normalized
     .query("events")
     .withIndex("by_dedupeKey", (q) => q.eq("dedupeKey", dedupeKey(event)))
     .take(20);
+  const window = await ctx.db
+    .query("events")
+    .withIndex("by_start", (q) => q.gte("startTime", event.startTime - FUZZY_WINDOW_MS).lte("startTime", event.startTime + FUZZY_WINDOW_MS))
+    .take(500);
+  const listed = [...keyed, ...window].find((d) => d._id !== exclude && hasSource(d, self));
+  if (listed) return listed;
+
   const exact = keyed.find((d) => candidate(d) || (d._id !== exclude && d.startTime === event.startTime));
   if (exact) return exact;
 
-  const nearby = (
-    await ctx.db
-      .query("events")
-      .withIndex("by_start", (q) => q.gte("startTime", event.startTime - FUZZY_WINDOW_MS).lte("startTime", event.startTime + FUZZY_WINDOW_MS))
-      .take(500)
-  ).filter(candidate);
-  const listed = nearby.find((d) => hasSource(d, self));
-  if (listed) return listed;
+  const nearby = window.filter(candidate);
   const place = placeOf(event);
   if (!place) return null;
   let best: { doc: Doc<"events">; score: number } | null = null;

@@ -10,7 +10,8 @@
     "timezone": "America/Los_Angeles",
     "location": {
       "online": false,
-      "address": "Hacker Dojo, 855 Maude Ave, Mountain View, CA 94043, USA"
+      "address": "Hacker Dojo, 855 Maude Ave, Mountain View, CA 94043, USA",
+      "name": "Hacker Dojo"
     }
   },
   {
@@ -24,7 +25,8 @@
     "timezone": "America/Los_Angeles",
     "location": {
       "online": false,
-      "address": "Soda Hall, Berkeley, CA 94720, USA"
+      "address": "Soda Hall, Berkeley, CA 94720, USA",
+      "name": "Soda Hall"
     }
   },
   {
@@ -38,7 +40,8 @@
     "timezone": "America/Los_Angeles",
     "location": {
       "online": false,
-      "address": "Hacker Dojo, 855 Maude Ave, Mountain View, CA 94043, USA"
+      "address": "Hacker Dojo, 855 Maude Ave, Mountain View, CA 94043, USA",
+      "name": "Hacker Dojo"
     }
   },
   {
@@ -65,7 +68,8 @@
     "timezone": "America/Los_Angeles",
     "location": {
       "online": false,
-      "address": "Stanford d.school, 416 Escondido Mall, Stanford, CA 94305, USA"
+      "address": "Stanford d.school, 416 Escondido Mall, Stanford, CA 94305, USA",
+      "name": "Stanford d.school"
     }
   },
   {
@@ -79,7 +83,8 @@
     "timezone": "America/Los_Angeles",
     "location": {
       "online": false,
-      "address": "Computer History Museum, 1401 N Shoreline Blvd, Mountain View, CA 94043, USA"
+      "address": "Computer History Museum, 1401 N Shoreline Blvd, Mountain View, CA 94043, USA",
+      "name": "Computer History Museum"
     }
   },
   {
@@ -93,7 +98,8 @@
     "timezone": "America/Los_Angeles",
     "location": {
       "online": false,
-      "address": "Hacker Dojo, 855 Maude Ave, Mountain View, CA 94043, USA"
+      "address": "Hacker Dojo, 855 Maude Ave, Mountain View, CA 94043, USA",
+      "name": "Hacker Dojo"
     }
   },
   {
@@ -107,7 +113,8 @@
     "timezone": "America/Los_Angeles",
     "location": {
       "online": false,
-      "address": "San Jose State University, San Jose, CA 95192, USA"
+      "address": "San Jose State University, San Jose, CA 95192, USA",
+      "name": "San Jose State University"
     }
   },
   {
@@ -121,7 +128,8 @@
     "timezone": "America/Los_Angeles",
     "location": {
       "online": false,
-      "address": "Hacker Dojo, 855 Maude Ave, Mountain View, CA 94043, USA"
+      "address": "Hacker Dojo, 855 Maude Ave, Mountain View, CA 94043, USA",
+      "name": "Hacker Dojo"
     }
   },
   {
@@ -135,7 +143,8 @@
     "timezone": "America/Los_Angeles",
     "location": {
       "online": false,
-      "address": "Stanford d.school, 416 Escondido Mall, Stanford, CA 94305, USA"
+      "address": "Stanford d.school, 416 Escondido Mall, Stanford, CA 94305, USA",
+      "name": "Stanford d.school"
     }
   },
   {
@@ -149,7 +158,8 @@
     "timezone": "America/Los_Angeles",
     "location": {
       "online": false,
-      "address": "Hacker Dojo, 855 Maude Ave, Mountain View, CA 94043, USA"
+      "address": "Hacker Dojo, 855 Maude Ave, Mountain View, CA 94043, USA",
+      "name": "Hacker Dojo"
     }
   },
   {
@@ -163,7 +173,8 @@
     "timezone": "America/Los_Angeles",
     "location": {
       "online": false,
-      "address": "Hacker Dojo, 855 Maude Ave, Mountain View, CA 94043, USA"
+      "address": "Hacker Dojo, 855 Maude Ave, Mountain View, CA 94043, USA",
+      "name": "Hacker Dojo"
     }
   },
   {

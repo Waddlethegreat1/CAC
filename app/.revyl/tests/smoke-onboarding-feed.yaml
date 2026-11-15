@@ -2,10 +2,10 @@
 
 _meta:
     remote_id: 11a20e59-fd8b-42b7-ae37-98753d03f797
-    remote_version: 1
-    local_version: 1
-    last_synced_at: "2026-11-15T18:05:59Z"
-    checksum: 0de1aa2a113679cddc8e38b36e5f587b90802f5c6190161e480b4a84ed4a97dd
+    remote_version: 3
+    local_version: 3
+    last_synced_at: "2026-11-15T19:01:02Z"
+    checksum: edac3d072d9912be04908293d49c2e6333fb29c2c83ba485643e6cf16eadd28c
 test:
     metadata:
         name: smoke-onboarding-feed

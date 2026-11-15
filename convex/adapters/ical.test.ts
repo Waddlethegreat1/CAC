@@ -9,7 +9,9 @@ import localistExpected from "../../fixtures/ical/localist-stanford.expected.jso
 import localistIcs from "../../fixtures/ical/localist-stanford.ics?raw";
 import lumaExpected from "../../fixtures/ical/luma-openrouter.expected.json";
 import lumaIcs from "../../fixtures/ical/luma-openrouter.ics?raw";
-import { icalAdapter, parseIcal } from "./ical";
+import venuesExpected from "../../fixtures/ical/venues.expected.json";
+import venuesIcs from "../../fixtures/ical/venues.ics?raw";
+import { icalAdapter, parseIcal, venueOf } from "./ical";
 
 const modules = import.meta.glob(["../**/*.ts", "../**/*.js", "!../**/*.test.ts", "!../**/*.d.ts"]);
 
@@ -41,6 +43,24 @@ describe("ical adapter", () => {
       expect(events).toEqual(platform.expected);
     });
   }
+
+  it("derives venue from the first LOCATION segment unless it is an address or a city", () => {
+    const events = parseIcal(venuesIcs, { source: "ical", feedUrl: "https://example.org/venues.ics", now: NOW });
+    expect(events).toEqual(venuesExpected);
+    expect(events.map((e) => e.location.name)).toEqual([
+      "Frontier Tower",
+      undefined,
+      undefined,
+      undefined,
+      "Hohbach Hall",
+      "Mission Bay Conference Center",
+      undefined,
+      undefined,
+    ]);
+    expect(events.every((e) => e.location.address)).toBe(true);
+    expect(venueOf("Stanford d.school, 416 Escondido Mall, Stanford, CA 94305, USA")).toBe("Stanford d.school");
+    expect(venueOf("Berkeley, CA 94720")).toBeUndefined();
+  });
 
   it("emits events that pass the RawEvent validator", async () => {
     const t = convexTest(schema, modules);
@@ -104,7 +124,7 @@ describe("ical location text", () => {
   });
 
   it("keeps real venues", () => {
-    expect(locationOf("Evans 597")).toEqual({ online: false, address: "Evans 597" });
-    expect(locationOf("Zoomcar HQ, Palo Alto")).toEqual({ online: false, address: "Zoomcar HQ, Palo Alto" });
+    expect(locationOf("Evans 597")).toEqual({ online: false, address: "Evans 597", name: "Evans 597" });
+    expect(locationOf("Zoomcar HQ, Palo Alto")).toEqual({ online: false, address: "Zoomcar HQ, Palo Alto", name: "Zoomcar HQ" });
   });
 });
