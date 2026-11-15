@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import devpostClub from "../fixtures/normalize/devpost-club.json";
 import lumaPair from "../fixtures/normalize/luma-ical-jsonld.json";
+import meetupCrosspost from "../fixtures/normalize/meetup-crosspost.json";
 import nearMisses from "../fixtures/normalize/near-misses.json";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -79,6 +80,17 @@ describe("cross-source dedupe", () => {
     expect(titleSimilarity(a.title, b.title)).toBeGreaterThanOrEqual(0.85);
   });
 
+  test("one event cross-posted to two Meetup groups merges within a source when title and start match exactly", async () => {
+    const t = convexTest(schema, modules);
+    const [a, b] = [await normalized(meetupCrosspost.a as RawEvent), await normalized(meetupCrosspost.b as RawEvent)];
+    const first = await t.run((ctx) => upsertEvent(ctx, a));
+    expect(await t.run((ctx) => upsertEvent(ctx, b))).toEqual({ id: first.id, created: false, merged: true });
+    const rows = await events(t);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].sources?.map((s: { url: string }) => s.url)).toEqual([a.url, b.url]);
+    expect(rows[0].description).toBe(b.description);
+  });
+
   test("saves on the first-seen row survive a merge", async () => {
     const t = convexTest(schema, modules);
     const { id } = await t.run(async (ctx) => upsertEvent(ctx, await normalized(lumaPair.a as RawEvent)));
@@ -126,6 +138,20 @@ describe("backfill", () => {
 });
 
 describe("geocoding", () => {
+  test("retries a failed Nominatim request instead of caching nothing", async () => {
+    let failures = 1;
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      if (!String(input).startsWith(NOMINATIM_URL)) throw new Error(`unexpected live fetch: ${input}`);
+      if (failures-- > 0) throw new Error("socket hang up");
+      return new Response(JSON.stringify([{ lat: "49.26", lon: "-123.11", address: { city: "Vancouver" } }]));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const t = convexTest(schema, modules);
+    expect(await t.action(internal.normalize.geocode.lookup, { query: "Vancouver, Canada" })).toMatchObject({ city: "Vancouver" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(await t.run((ctx) => ctx.db.query("geocode_cache").collect())).toMatchObject([{ key: "vancouver canada", lat: 49.26 }]);
+  });
+
   const nominatimHits: Record<string, unknown[]> = {
     "2495 bancroft way berkeley ca 94720 usa": [{ lat: "37.8687", lon: "-122.2594", address: { city: "Berkeley" } }],
     "1401 n shoreline blvd": [{ lat: "37.4143", lon: "-122.0774", address: { city: "Mountain View" } }],
@@ -167,8 +193,18 @@ describe("geocoding", () => {
     expect(calls).toHaveLength(0);
     expect(await t.action(internal.normalize.geocode.lookup, { query: "Nowhere Hall" })).toBeNull();
     expect(await t.action(internal.normalize.geocode.lookup, { query: "Nowhere Hall" })).toBeNull();
-    expect(calls).toHaveLength(1);
-  });
+    expect(calls).toHaveLength(2);
+    calls.length = 0;
+    expect(await t.action(internal.normalize.geocode.lookup, { query: "Seminar Room B, 11-25 Kurahara-cho, Miyakonojo, Japan" })).toBeNull();
+    expect(calls.map((c) => new URL(c.url).searchParams.get("q"))).toEqual([
+      "Seminar Room B, 11-25 Kurahara-cho, Miyakonojo, Japan",
+      "Seminar Room B, 11-25 Kurahara-cho, Miyakonojo, Japan",
+      "11-25 Kurahara-cho, Miyakonojo, Japan",
+      "11-25 Kurahara-cho, Miyakonojo, Japan",
+      "Miyakonojo, Japan",
+      "Miyakonojo, Japan",
+    ]);
+  }, 20_000);
 
   test("runFeed geocodes table misses and keeps ungeocodable events with no coordinates", async () => {
     const raws: Partial<RawEvent>[] = [
@@ -188,7 +224,37 @@ describe("geocoding", () => {
     expect(rows.find((r) => r.sourceId === "secret")).toMatchObject({ city: "" });
     expect(rows.find((r) => r.sourceId === "secret")?.lat).toBeUndefined();
     expect(rows.find((r) => r.sourceId === "known")).toMatchObject({ city: "Palo Alto", lat: 37.4419 });
-    expect(calls.filter((c) => c.url.startsWith(NOMINATIM_URL))).toHaveLength(2);
+    expect(calls.filter((c) => c.url.startsWith(NOMINATIM_URL))).toHaveLength(3);
+  });
+
+  test("prefers a Bay Area match, then falls back to the world and to the address without its venue", async () => {
+    const answer = (url: URL) => {
+      const q = geocodeKey(url.searchParams.get("q")!);
+      const bounded = url.searchParams.get("bounded") === "1";
+      if (q === "evans 597") return bounded ? [{ lat: "37.8737", lon: "-122.2578", address: { city: "Berkeley" } }] : [{ lat: "42.62", lon: "-79.06", address: { village: "Angola" } }];
+      if (q === "madrid spain") return bounded ? [] : [{ lat: "40.4167", lon: "-3.7033", address: { city: "Madrid" } }];
+      return [];
+    };
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        const url = new URL(String(input));
+        if (!url.toString().startsWith(NOMINATIM_URL)) throw new Error(`unexpected live fetch: ${url}`);
+        calls.push(`${url.searchParams.get("q")}|${url.searchParams.get("bounded") ?? "0"}`);
+        return new Response(JSON.stringify(answer(url)));
+      }),
+    );
+    const t = convexTest(schema, modules);
+    expect(await t.action(internal.normalize.geocode.lookup, { query: "Evans 597" })).toMatchObject({ city: "Berkeley" });
+    expect(await t.action(internal.normalize.geocode.lookup, { query: "HappyRobot Madrid Office, Madrid, Spain" })).toMatchObject({ city: "Madrid" });
+    expect(calls).toEqual([
+      "Evans 597|1",
+      "HappyRobot Madrid Office, Madrid, Spain|1",
+      "HappyRobot Madrid Office, Madrid, Spain|0",
+      "Madrid, Spain|1",
+      "Madrid, Spain|0",
+    ]);
   });
 });
 
