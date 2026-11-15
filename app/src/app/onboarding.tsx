@@ -1,71 +1,66 @@
 import { useMutation, useQuery } from "convex/react";
-import * as Location from "expo-location";
 import { router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Chip } from "@/components/chip";
-import { colors, radius } from "@/constants/theme";
+import { Brand } from "@/components/brand";
+import { Button } from "@/components/button";
+import { Icon, type IconName } from "@/components/icon";
+import { Segmented } from "@/components/segmented";
+import { SelectChip } from "@/components/select-chip";
+import { colors, layout, radius, shadow, space, type } from "@/constants/theme";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
-import { BAY_AREA_CITIES, inBayArea, nearestCity } from "@/convex/lib/geo";
-import { useDeviceId } from "@/lib/device";
+import { RADIUS_OPTIONS, useDeviceId, useSearchRadius } from "@/lib/device";
+import { AREAS, ROLE_DEFAULT_INTERESTS, cityPlace, locateDevice, type Place, type Role } from "@/lib/profile";
 
-type Role = "student" | "investor";
-type Place = { city: string; lat: number; lng: number; locationSource: "device" | "city" };
-
-const ROLES: { id: Role; title: string; blurb: string; emoji: string }[] = [
-  { id: "student", title: "Student", blurb: "Find hackathons, pitch nights, and founders to meet.", emoji: "🎓" },
-  { id: "investor", title: "Investor", blurb: "Scout student founders and demo days worth your time.", emoji: "🔭" },
+const ROLES: { id: Role; icon: IconName; title: string; blurb: string }[] = [
+  { id: "student", icon: "graduation-cap", title: "I'm a student", blurb: "Find hackathons, pitch competitions, and founder nights near campus" },
+  { id: "investor", icon: "briefcase", title: "I'm an investor", blurb: "Discover student events worth scouting, ranked by investor signal" },
 ];
-
-const STUDENT_DEFAULTS = ["hackathons", "pitch", "networking"];
-const INVESTOR_DEFAULTS = ["pitch", "vc", "founders"];
 
 export default function Onboarding() {
   const deviceId = useDeviceId();
   const existing = useQuery(api.users.get, deviceId ? { deviceId } : "skip");
-  if (!deviceId || existing === undefined) return <ActivityIndicator style={{ flex: 1 }} color={colors.accent} />;
+  if (!deviceId || existing === undefined) return <ActivityIndicator style={{ flex: 1 }} color={colors.ember} />;
   return <OnboardingForm deviceId={deviceId} existing={existing} />;
 }
 
 function OnboardingForm({ deviceId, existing }: { deviceId: string; existing: Doc<"users"> | null }) {
   const catalog = useQuery(api.interests.list);
   const upsert = useMutation(api.users.upsert);
+  const { radiusKm, setRadiusKm } = useSearchRadius();
   const [step, setStep] = useState(0);
   const [role, setRole] = useState<Role | null>(existing?.role ?? null);
   const [interests, setInterests] = useState<string[]>(existing?.interests ?? []);
+  const [customized, setCustomized] = useState(!!existing);
   const [place, setPlace] = useState<Place | null>(
     existing ? { city: existing.city, lat: existing.lat, lng: existing.lng, locationSource: existing.locationSource } : null,
   );
   const [locating, setLocating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const pickRole = (r: Role) => {
     setRole(r);
-    if (interests.length === 0) setInterests(r === "student" ? STUDENT_DEFAULTS : INVESTOR_DEFAULTS);
+    setError(null);
+    if (!customized) setInterests(ROLE_DEFAULT_INTERESTS[r]);
   };
 
-  const toggleInterest = (id: string) =>
+  const toggleInterest = (id: string) => {
+    setCustomized(true);
+    setError(null);
     setInterests((cur) => (cur.includes(id) ? cur.filter((i) => i !== id) : [...cur, id]));
+  };
 
   const useMyLocation = async () => {
     setLocating(true);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Location is off", "Pick a city instead, or enable location in Settings.");
-        return;
-      }
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      setPlace({ city: inBayArea(coords) ? nearestCity(coords).name : "Near you", ...coords, locationSource: "device" });
-    } catch {
-      Alert.alert("Couldn't get your location", "Pick a city instead.");
-    } finally {
-      setLocating(false);
-    }
+    setError(null);
+    const result = await locateDevice();
+    setLocating(false);
+    if ("error" in result) return setError(result.error);
+    setPlace(result.place);
   };
 
   const finish = async () => {
@@ -74,103 +69,138 @@ function OnboardingForm({ deviceId, existing }: { deviceId: string; existing: Do
     try {
       await upsert({ deviceId, role, interests, ...place });
       router.replace("/feed");
+    } catch {
+      setError("Couldn't save your profile: no connection. Try again");
     } finally {
       setSaving(false);
     }
   };
 
-  const canContinue = [role !== null, interests.length > 0, place !== null][step];
+  const next = () => {
+    if (step === 0 && !role) return setError("Choose student or investor to continue");
+    if (step === 1 && interests.length === 0) return setError("Pick at least one interest");
+    if (step === 2 && !place) return setError("Use your location or pick an area");
+    setError(null);
+    if (step < 2) setStep(step + 1);
+    else void finish();
+  };
+
+  const back = () => {
+    setError(null);
+    setStep(step - 1);
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <View style={styles.progress}>
-        {[0, 1, 2].map((i) => (
-          <View key={i} style={[styles.bar, i <= step && styles.barOn]} />
-        ))}
+      <View style={styles.head}>
+        <Brand />
+        <View style={styles.steps} accessibilityLabel={`Step ${step + 1} of 3`}>
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={[styles.step, i <= step && styles.stepOn]} />
+          ))}
+        </View>
       </View>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {step === 0 && (
           <>
-            <Text style={styles.kicker}>Welcome to Scout</Text>
-            <Text style={styles.h1}>Startup events near you, ranked for you.</Text>
-            <Text style={styles.sub}>Which best describes you?</Text>
-            <View style={{ gap: 12 }}>
-              {ROLES.map((r) => (
-                <Pressable
-                  key={r.id}
-                  testID={`role-${r.id}`}
-                  accessibilityRole="button"
-                  onPress={() => pickRole(r.id)}
-                  style={[styles.roleCard, role === r.id && styles.roleOn]}
-                >
-                  <Text style={styles.roleEmoji}>{r.emoji}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.roleTitle, role === r.id && { color: colors.white }]}>{r.title}</Text>
-                    <Text style={[styles.roleBlurb, role === r.id && { color: "#D9D4CC" }]}>{r.blurb}</Text>
-                  </View>
-                </Pressable>
-              ))}
+            <Text style={styles.h1}>Find the rooms where startups happen</Text>
+            <Text style={styles.lede}>Hackathons, pitch nights, and demo days near you, ranked for what you care about</Text>
+            <View accessibilityRole="radiogroup" accessibilityLabel="I am">
+              {ROLES.map((r) => {
+                const on = role === r.id;
+                return (
+                  <Pressable
+                    key={r.id}
+                    testID={`role-${r.id}`}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: on }}
+                    onPress={() => pickRole(r.id)}
+                    style={[styles.role, on && styles.roleOn]}
+                  >
+                    <View style={styles.roleIcon}>
+                      <Icon name={r.icon} size={20} color={colors.ember} />
+                    </View>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text style={styles.roleTitle}>{r.title}</Text>
+                      <Text style={styles.roleBlurb}>{r.blurb}</Text>
+                    </View>
+                    <View style={[styles.radio, on && styles.radioOn]} />
+                  </Pressable>
+                );
+              })}
             </View>
           </>
         )}
         {step === 1 && (
           <>
-            <Text style={styles.kicker}>Step 2 of 3</Text>
-            <Text style={styles.h1}>What are you into?</Text>
-            <Text style={styles.sub}>Pick a few. We rank events that match higher.</Text>
+            <Text style={styles.h1}>What are you into</Text>
+            <Text style={styles.lede}>
+              {role === "investor" ? "We'll surface student events in these spaces first" : "Pick a few. Your feed ranks events that match higher"}
+            </Text>
             <View style={styles.chips}>
-              {catalog === undefined ? <ActivityIndicator color={colors.accent} /> : null}
+              {catalog === undefined ? <ActivityIndicator color={colors.ember} /> : null}
               {catalog?.map((i) => (
-                <Chip
+                <SelectChip
                   key={i.slug}
                   testID={`interest-${i.slug}`}
-                  label={`${i.emoji} ${i.label}`}
+                  label={i.label}
                   selected={interests.includes(i.slug)}
                   onPress={() => toggleInterest(i.slug)}
                 />
               ))}
             </View>
+            <Text style={styles.count}>{interests.length === 0 ? "None selected" : `${interests.length} selected`}</Text>
           </>
         )}
         {step === 2 && (
           <>
-            <Text style={styles.kicker}>Step 3 of 3</Text>
-            <Text style={styles.h1}>Where are you?</Text>
-            <Text style={styles.sub}>We use this to sort events by distance. It stays on your profile only.</Text>
-            <Pressable testID="use-location" accessibilityRole="button" onPress={useMyLocation} style={styles.locate}>
-              {locating ? <ActivityIndicator color={colors.accent} /> : <Text style={styles.locateText}>📍 Use my current location</Text>}
-            </Pressable>
-            {place?.locationSource === "device" ? <Text style={styles.located}>Located near {place.city}</Text> : null}
-            <Text style={styles.or}>or pick a city</Text>
+            <Text style={styles.h1}>Where should we look</Text>
+            <Text style={styles.lede}>Scout launches in the Bay Area. Distances are from this spot</Text>
+            <Button
+              testID="use-location"
+              variant="outline"
+              label={locating ? "Finding you" : "Use my location"}
+              loading={locating}
+              icon={<Icon name="locate" size={18} color={colors.ember} />}
+              onPress={useMyLocation}
+            />
+            {place?.locationSource === "device" ? (
+              <View style={styles.located}>
+                <Icon name="check" size={16} color={colors.success} strokeWidth={2} />
+                <Text style={styles.locatedText}>Near {place.city}</Text>
+              </View>
+            ) : null}
+            <Text style={styles.field}>Or pick an area</Text>
             <View style={styles.chips}>
-              {BAY_AREA_CITIES.map((c) => (
-                <Chip
+              {AREAS.map((c) => (
+                <SelectChip
                   key={c.name}
                   testID={`city-${c.name}`}
                   label={c.name}
                   selected={place?.locationSource === "city" && place.city === c.name}
-                  onPress={() => setPlace({ city: c.name, lat: c.lat, lng: c.lng, locationSource: "city" })}
+                  onPress={() => {
+                    setError(null);
+                    setPlace(cityPlace(c.name));
+                  }}
                 />
               ))}
             </View>
+            <Text style={styles.field}>How far will you go</Text>
+            <Segmented
+              accessibilityLabel="How far will you go"
+              options={RADIUS_OPTIONS.map((o) => ({ value: o.km, label: o.label, testID: `radius-${o.km}` }))}
+              value={radiusKm}
+              onChange={setRadiusKm}
+            />
           </>
         )}
       </ScrollView>
-      <View style={styles.footer}>
-        {step > 0 ? (
-          <Pressable accessibilityRole="button" onPress={() => setStep(step - 1)} style={styles.back}>
-            <Text style={styles.backText}>Back</Text>
-          </Pressable>
-        ) : null}
-        <Pressable
-          testID="onboarding-next"
-          accessibilityRole="button"
-          disabled={!canContinue || saving}
-          onPress={() => (step < 2 ? setStep(step + 1) : finish())}
-          style={[styles.cta, (!canContinue || saving) && { opacity: 0.35 }]}
-        >
-          {saving ? <ActivityIndicator color={colors.white} /> : <Text style={styles.ctaText}>{step < 2 ? "Continue" : "Show my events"}</Text>}
-        </Pressable>
+      <View style={styles.foot}>
+        <Text style={styles.error} accessibilityRole="alert">
+          {error ?? ""}
+        </Text>
+        <Button testID="onboarding-next" label={step < 2 ? "Continue" : "Show my events"} loading={saving} onPress={next} />
+        {step > 0 ? <Button testID="onboarding-back" variant="ghost" label="Back" onPress={back} /> : null}
       </View>
     </SafeAreaView>
   );
@@ -178,40 +208,34 @@ function OnboardingForm({ deviceId, existing }: { deviceId: string; existing: Do
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  progress: { flexDirection: "row", gap: 6, paddingHorizontal: 24, paddingTop: 8 },
-  bar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.faint },
-  barOn: { backgroundColor: colors.accent },
-  content: { padding: 24, gap: 12 },
-  kicker: { color: colors.accent, fontWeight: "800", fontSize: 13, textTransform: "uppercase", letterSpacing: 1 },
-  h1: { fontSize: 32, fontWeight: "900", color: colors.ink, letterSpacing: -0.8, lineHeight: 36 },
-  sub: { fontSize: 16, color: colors.muted, marginBottom: 12 },
-  roleCard: {
+  head: { paddingHorizontal: layout.screenPadding, paddingTop: space.sm },
+  steps: { flexDirection: "row", gap: 4, marginTop: space.md, marginBottom: space.xl },
+  step: { flex: 1, height: 3, borderRadius: 2, backgroundColor: colors.secondary },
+  stepOn: { backgroundColor: colors.ember },
+  content: { paddingHorizontal: layout.screenPadding, paddingBottom: space.xl },
+  h1: { ...type.onboardingTitle, color: colors.ink, marginBottom: space.sm },
+  lede: { ...type.body, color: colors.muted, marginBottom: space.xxl },
+  role: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    padding: 18,
-    borderRadius: radius.md,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.faint,
+    gap: space.md,
+    padding: space.lg,
+    marginBottom: space.md,
+    borderRadius: radius.card,
+    backgroundColor: colors.surface,
+    ...shadow.card,
   },
-  roleOn: { backgroundColor: colors.ink, borderColor: colors.ink },
-  roleEmoji: { fontSize: 32 },
-  roleTitle: { fontSize: 18, fontWeight: "800", color: colors.ink },
-  roleBlurb: { fontSize: 14, color: colors.muted, marginTop: 2 },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  locate: {
-    backgroundColor: colors.accentSoft,
-    borderRadius: radius.md,
-    padding: 18,
-    alignItems: "center",
-  },
-  locateText: { color: colors.accent, fontWeight: "800", fontSize: 16 },
-  located: { color: colors.money, fontWeight: "700", textAlign: "center" },
-  or: { color: colors.muted, textAlign: "center", marginVertical: 8 },
-  footer: { flexDirection: "row", gap: 10, paddingHorizontal: 24, paddingBottom: 12, paddingTop: 8 },
-  back: { paddingHorizontal: 20, justifyContent: "center", borderRadius: radius.pill, backgroundColor: colors.card },
-  backText: { fontWeight: "700", color: colors.ink, fontSize: 16 },
-  cta: { flex: 1, backgroundColor: colors.accent, borderRadius: radius.pill, paddingVertical: 17, alignItems: "center" },
-  ctaText: { color: colors.white, fontWeight: "800", fontSize: 17 },
+  roleOn: { borderColor: colors.ember, borderWidth: 1.5 },
+  roleIcon: { width: 40, height: 40, borderRadius: radius.sm, backgroundColor: colors.emberSoft, alignItems: "center", justifyContent: "center" },
+  roleTitle: { ...type.bodyStrong, fontSize: 16, fontWeight: "600", color: colors.ink },
+  roleBlurb: { ...type.meta, color: colors.muted },
+  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: colors.lineStrong },
+  radioOn: { borderWidth: 6, borderColor: colors.ember },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+  count: { ...type.meta, color: colors.subtle, marginTop: space.lg },
+  located: { flexDirection: "row", alignItems: "center", gap: space.sm, marginTop: 10 },
+  locatedText: { ...type.meta, color: colors.success },
+  field: { ...type.label, color: colors.muted, marginTop: space.xl, marginBottom: space.sm },
+  foot: { paddingHorizontal: layout.screenPadding, paddingBottom: space.md, gap: space.sm },
+  error: { ...type.meta, color: colors.danger, minHeight: 18 },
 });

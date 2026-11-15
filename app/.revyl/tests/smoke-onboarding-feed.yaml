@@ -16,19 +16,19 @@ test:
         name: Scout iOS
     blocks:
         - type: validation
-          step_description: The onboarding screen says "Welcome to Scout" and shows a Student option and an Investor option.
+          step_description: The onboarding screen says "Find the rooms where startups happen" and shows an "I'm a student" option and an "I'm an investor" option.
         - type: instructions
           step_description: Tap the Student option.
         - type: instructions
           step_description: Tap the Continue button at the bottom of the screen.
         - type: validation
-          step_description: A screen titled "What are you into?" shows interest chips, and Hackathons and Pitch competitions are already selected.
+          step_description: A screen titled "What are you into" shows interest chips, and Hackathons and Pitch competitions are already selected.
         - type: instructions
           step_description: Tap the "AI & ML" interest chip.
         - type: instructions
           step_description: Tap the Continue button.
         - type: validation
-          step_description: A screen titled "Where are you?" shows a "Use my current location" button and a list of cities.
+          step_description: A screen titled "Where should we look" shows a "Use my location" button and a list of areas.
         - type: instructions
           step_description: Tap the "Palo Alto" city chip.
         - type: instructions

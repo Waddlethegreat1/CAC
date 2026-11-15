@@ -16,9 +16,8 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
-            <Stack.Screen name="feed" options={{ gestureEnabled: false }} />
+            <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
             <Stack.Screen name="event/[id]" />
-            <Stack.Screen name="saved" />
           </Stack>
         </SafeAreaProvider>
       </DeviceProvider>
