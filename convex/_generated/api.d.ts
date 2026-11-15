@@ -42,6 +42,7 @@ import type * as normalize_dedupe from "../normalize/dedupe.js";
 import type * as normalize_embed from "../normalize/embed.js";
 import type * as normalize_geocode from "../normalize/geocode.js";
 import type * as normalize_index from "../normalize/index.js";
+import type * as normalize_reassignEventRefs from "../normalize/reassignEventRefs.js";
 import type * as saves from "../saves.js";
 import type * as seed from "../seed.js";
 import type * as users from "../users.js";
@@ -87,6 +88,7 @@ declare const fullApi: ApiFromModules<{
   "normalize/embed": typeof normalize_embed;
   "normalize/geocode": typeof normalize_geocode;
   "normalize/index": typeof normalize_index;
+  "normalize/reassignEventRefs": typeof normalize_reassignEventRefs;
   saves: typeof saves;
   seed: typeof seed;
   users: typeof users;
