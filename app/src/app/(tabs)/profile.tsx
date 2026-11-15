@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "@/components/button";
+import { AttendanceHistory } from "@/components/attendance";
 import { Icon } from "@/components/icon";
 import { Segmented } from "@/components/segmented";
 import { SelectChip } from "@/components/select-chip";
@@ -213,6 +214,15 @@ function ProfileForm({ user }: { user: User }) {
             onChange={(radiusKm) => void save({ radiusKm }, "Distance updated")}
           />
         </View>
+      </View>
+
+      <AttendanceHistory />
+      <Text style={styles.group}>Missing an event</Text>
+      <View style={styles.card}>
+        <Pressable testID="profile-add-event" accessibilityRole="button" onPress={() => router.push("/submit")} style={styles.prow}>
+          <Text style={styles.body}>Add an event by link</Text>
+          <Icon name="chevron-right" size={16} color={colors.subtle} />
+        </Pressable>
       </View>
 
       <Text style={styles.error} accessibilityRole="alert">

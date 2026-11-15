@@ -4,7 +4,7 @@ import type { RawEvent } from "./rawEvent";
 export type Feed = Pick<Doc<"feeds">, "source" | "name" | "url">;
 
 export type Http = {
-  text(url: string, accept?: string): Promise<string>;
+  text(url: string, accept?: string, headers?: Record<string, string>): Promise<string>;
 };
 
 export interface Adapter {

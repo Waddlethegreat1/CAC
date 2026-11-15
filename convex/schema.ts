@@ -201,4 +201,25 @@ export default defineSchema({
     userId: v.id("users"),
     requests: v.array(v.number()),
   }).index("by_user", ["userId"]),
+  attendance: defineTable({
+    userId: v.id("users"),
+    eventId: v.id("events"),
+    going: v.boolean(),
+    attended: v.optional(v.boolean()),
+    rating: v.optional(v.number()),
+    investors: v.optional(v.union(v.literal("yes"), v.literal("no"), v.literal("unsure"))),
+    note: v.optional(v.string()),
+    dismissedAt: v.optional(v.number()),
+  })
+    .index("by_user_event", ["userId", "eventId"])
+    .index("by_user_going", ["userId", "going"])
+    .index("by_user_attended", ["userId", "attended"])
+    .index("by_event", ["eventId"]),
+
+  attendance_totals: defineTable({
+    eventId: v.id("events"),
+    ratingCount: v.number(),
+    ratingSum: v.number(),
+    investorConfirmations: v.number(),
+  }).index("by_event", ["eventId"]),
 });

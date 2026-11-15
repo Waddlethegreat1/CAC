@@ -83,6 +83,18 @@ const LOCALIST_GROUP_ICS = {
   "calendar.ucsf.edu/9920": "https://calendar.ucsf.edu/group/entrepreneurship_center/calendar.ics",
 };
 
+function deploymentHasEnv(name) {
+  try {
+    const value = execFileSync("npx", ["convex", "env", "get", ...convexArgs, name], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    return value.trim() !== "";
+  } catch {
+    return false;
+  }
+}
+
+let eventbriteTokenSet;
+const hasEventbriteToken = () => (eventbriteTokenSet ??= deploymentHasEnv("EVENTBRITE_TOKEN"));
+
 function applyTerms(entry, feed) {
   const platform = entry.source_platform ?? feed.source;
   const host = new URL(feed.url).host;
@@ -92,7 +104,10 @@ function applyTerms(entry, feed) {
   }
   if (platform === "mlh") return { ...feed, enabled: false, why: "mlh pending a decision" };
   if (platform === "eventbrite" || host.endsWith("eventbrite.com")) {
-    return { ...feed, enabled: false, why: "eventbrite needs an API token" };
+    if (!hasEventbriteToken()) {
+      return { ...feed, enabled: false, why: "eventbrite stays disabled: EVENTBRITE_TOKEN is not set on the Convex deployment" };
+    }
+    return { ...feed, source: "eventbrite", enabled: true, why: "eventbrite enabled through the API (EVENTBRITE_TOKEN set)" };
   }
   if (host === "calendar.google.com") return { ...feed, enabled: false, why: "google calendar robots.txt disallows all" };
   if (feed.source === "localist") {

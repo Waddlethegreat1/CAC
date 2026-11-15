@@ -57,12 +57,18 @@ export const reserveSlot = internalMutation({
   },
 });
 
-export async function throttledFetch(ctx: ActionCtx, url: string, accept: string, redirect: RequestRedirect = "follow") {
+export async function throttledFetch(
+  ctx: ActionCtx,
+  url: string,
+  accept: string,
+  redirect: RequestRedirect = "follow",
+  headers: Record<string, string> = {},
+) {
   const domain = new URL(url).host;
   const at = await ctx.runMutation(internal.lib.http.reserveSlot, { domain });
   const wait = at - Date.now();
   if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-  return fetch(url, { headers: { "User-Agent": USER_AGENT, Accept: accept }, redirect });
+  return fetch(url, { headers: { ...headers, "User-Agent": USER_AGENT, Accept: accept }, redirect });
 }
 
 export class UnsafeUrlError extends Error {
@@ -79,11 +85,17 @@ export type HttpOptions = {
 };
 
 export function makeHttp(ctx: ActionCtx, { validateUrl }: HttpOptions = {}): Http {
-  const guardedFetch = async (url: string, accept: string, beforeHop?: (url: string) => Promise<void>) => {
-    if (!validateUrl) return throttledFetch(ctx, url, accept);
+  const guardedFetch = async (
+    url: string,
+    accept: string,
+    beforeHop?: (url: string) => Promise<void>,
+    headers?: Record<string, string>,
+  ) => {
+    if (!validateUrl) return throttledFetch(ctx, url, accept, "follow", headers);
     let current = url;
     for (let hop = 0; ; hop++) {
-      const res = await throttledFetch(ctx, current, accept, "manual");
+      const sameOrigin = new URL(current).origin === new URL(url).origin;
+      const res = await throttledFetch(ctx, current, accept, "manual", sameOrigin ? headers : undefined);
       if (res.status < 300 || res.status >= 400) return res;
       const location = res.headers.get("location");
       if (!location) return res;
@@ -119,14 +131,14 @@ export function makeHttp(ctx: ActionCtx, { validateUrl }: HttpOptions = {}): Htt
   };
 
   return {
-    async text(url, accept = "*/*") {
+    async text(url, accept = "*/*", headers) {
       const problem = validateUrl?.(url);
       if (problem) throw new UnsafeUrlError(`${url} is a blocked address: ${problem}`);
       const checkRobots = async (target: string) => {
         if (!isAllowed(await robotsFor(target), target)) throw new RobotsDisallowedError(target);
       };
       await checkRobots(url);
-      const res = await guardedFetch(url, accept, checkRobots);
+      const res = await guardedFetch(url, accept, checkRobots, headers);
       if (!res.ok) throw new Error(`${url} responded ${res.status}`);
       return res.text();
     },
