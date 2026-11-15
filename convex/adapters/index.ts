@@ -1,9 +1,11 @@
 import type { Adapter } from "../lib/adapter";
 import { devpostAdapter } from "./devpost";
+import { jsonldAdapter } from "./jsonld";
 import { lumaAdapter } from "./luma";
 
 export const ADAPTERS: Record<string, Adapter> = {
   [devpostAdapter.source]: devpostAdapter,
+  [jsonldAdapter.source]: jsonldAdapter,
   [lumaAdapter.source]: lumaAdapter,
 };
 

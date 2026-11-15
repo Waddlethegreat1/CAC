@@ -1,10 +1,13 @@
-import type { Adapter, RawEvent, RawLocation } from "./jsonld.contract";
+import type { Adapter } from "../lib/adapter";
+import type { RawEvent, RawLocation } from "../lib/rawEvent";
+import { toZonedIso } from "../lib/time";
 
 const SOURCE = "jsonld";
+const DEFAULT_TIMEZONE = "America/Los_Angeles";
 
 type Node = Record<string, unknown>;
 
-export const jsonld: Adapter = {
+export const jsonldAdapter: Adapter = {
   source: SOURCE,
   async fetch(feed, http) {
     const html = await http.text(feed.url, "text/html");
@@ -89,21 +92,23 @@ function isOnlineOnly(node: Node): boolean {
 
 function eventFromNode(node: Node, pageUrl: string, metas: Map<string, string>): RawEvent | undefined {
   const title = text(node.name);
-  const startsAt = date(node.startDate);
-  if (!title || !startsAt) return undefined;
+  const start = text(node.startDate);
+  if (!title || !start || Number.isNaN(Date.parse(start))) return undefined;
   const url = absolute(text(node.url), pageUrl) ?? pageUrl;
   const id = absolute(text(node["@id"]), pageUrl);
+  const timezone = timezoneFor(start, text(node.scheduleTimezone) ?? text(node.timezone));
+  const hosts = organizers(node.organizer);
   return compact({
     source: SOURCE,
     sourceId: id && !id.includes("#") ? id : url,
     title,
-    startsAt,
-    endsAt: date(node.endDate),
-    location: location(node.location),
+    description: text(node.description) ?? metas.get("og:description") ?? metas.get("description") ?? "",
     url,
-    description: text(node.description) ?? metas.get("og:description") ?? metas.get("description"),
-    organizer: organizer(node.organizer),
-    price: price(node.offers),
+    ...times(start, text(node.endDate), timezone),
+    timezone,
+    location: location(node.location),
+    organizer: hosts[0],
+    hosts: hosts.length > 0 ? hosts : undefined,
     imageUrl: absolute(image(node.image), pageUrl) ?? metas.get("og:image"),
   });
 }
@@ -112,53 +117,64 @@ function eventFromMetas(html: string, metas: Map<string, string>, pageUrl: strin
   const siteName = metas.get("og:site_name");
   let title = metas.get("og:title") ?? metas.get("twitter:title") ?? pageTitle(html);
   if (title && siteName) title = title.replace(new RegExp(`\\s+[|·•–-]\\s+${escapeRegExp(siteName)}$`), "");
-  const startsAt = date(
+  const start =
     metas.get("event:start_time") ??
-      metas.get("og:event:start_time") ??
-      metas.get("startdate") ??
-      timeAttribute(html, /\bdtstart\b|itemprop\s*=\s*["']startDate/i),
-  );
-  if (!title || !startsAt) return undefined;
+    metas.get("og:event:start_time") ??
+    metas.get("startdate") ??
+    timeAttribute(html, /\bdtstart\b|itemprop\s*=\s*["']startDate/i);
+  if (!title || !start || Number.isNaN(Date.parse(start))) return undefined;
+  const end =
+    metas.get("event:end_time") ??
+    metas.get("og:event:end_time") ??
+    metas.get("enddate") ??
+    timeAttribute(html, /\bdtend\b|itemprop\s*=\s*["']endDate/i);
   const url = absolute(metas.get("og:url") ?? canonical(html), pageUrl) ?? pageUrl;
   const place = metas.get("event:location") ?? metas.get("og:event:location");
+  const timezone = timezoneFor(start);
   return compact({
     source: SOURCE,
     sourceId: url,
     title: title.trim(),
-    startsAt,
-    endsAt: date(
-      metas.get("event:end_time") ??
-        metas.get("og:event:end_time") ??
-        metas.get("enddate") ??
-        timeAttribute(html, /\bdtend\b|itemprop\s*=\s*["']endDate/i),
-    ),
-    location: place ? { address: place } : undefined,
+    description: metas.get("og:description") ?? metas.get("description") ?? "",
     url,
-    description: metas.get("og:description") ?? metas.get("description"),
+    ...times(start, end, timezone),
+    timezone,
+    location: place ? { online: false, address: place } : { online: false },
     imageUrl: metas.get("og:image"),
   });
 }
 
-function location(value: unknown): RawLocation | undefined {
+function location(value: unknown): RawLocation {
   for (const entry of list(value)) {
     if (typeof entry === "string") {
-      if (!/^https?:\/\//.test(entry) && entry.trim()) return { address: decode(entry.trim()) };
+      if (!/^https?:\/\//.test(entry) && entry.trim()) return { online: false, address: decode(entry.trim()) };
       continue;
     }
     if (!isObject(entry) || types(entry).includes("VirtualLocation")) continue;
     const isAddress = types(entry).includes("PostalAddress");
+    const postal = isAddress ? entry : entry.address;
     const geo = isObject(entry.geo) ? entry.geo : entry;
     const lat = number(geo.latitude);
     const lng = number(geo.longitude);
-    const result = compact({
+    const hasGeo = lat !== undefined && lng !== undefined;
+    return compact({
+      online: false,
       name: isAddress ? undefined : text(entry.name),
-      address: address(isAddress ? entry : entry.address),
-      lat: lat !== undefined && lng !== undefined ? lat : undefined,
-      lng: lat !== undefined && lng !== undefined ? lng : undefined,
+      address: address(postal),
+      city: addressPart(postal, "addressLocality"),
+      region: addressPart(postal, "addressRegion"),
+      country: addressPart(postal, "addressCountry"),
+      lat: hasGeo ? lat : undefined,
+      lng: hasGeo ? lng : undefined,
     });
-    if (Object.keys(result).length > 0) return result;
   }
-  return undefined;
+  return { online: false };
+}
+
+function addressPart(value: unknown, key: string): string | undefined {
+  if (!isObject(value)) return undefined;
+  const raw = value[key];
+  return text(isObject(raw) ? raw.name : raw);
 }
 
 function address(value: unknown): string | undefined {
@@ -166,34 +182,15 @@ function address(value: unknown): string | undefined {
   if (!isObject(value)) return undefined;
   const parts: string[] = [];
   for (const key of ["streetAddress", "addressLocality", "addressRegion", "postalCode", "addressCountry"]) {
-    const raw = value[key];
-    const part = text(isObject(raw) ? raw.name : raw);
+    const part = addressPart(value, key);
     if (part && !parts.join(", ").toLowerCase().includes(part.toLowerCase())) parts.push(part);
   }
   return parts.length > 0 ? parts.join(", ") : undefined;
 }
 
-function organizer(value: unknown): string | undefined {
-  for (const entry of list(value)) {
-    const name = typeof entry === "string" ? text(entry) : isObject(entry) ? text(entry.name) : undefined;
-    if (name) return name;
-  }
-  return undefined;
-}
-
-function price(value: unknown): RawEvent["price"] {
-  const amounts: number[] = [];
-  let currency: string | undefined;
-  for (const offer of list(value)) {
-    if (!isObject(offer)) continue;
-    for (const key of ["price", "lowPrice", "highPrice"]) {
-      const amount = number(offer[key]);
-      if (amount !== undefined) amounts.push(amount);
-    }
-    currency ??= text(offer.priceCurrency)?.toUpperCase();
-  }
-  if (amounts.length === 0) return undefined;
-  return compact({ min: Math.min(...amounts), max: Math.max(...amounts), currency });
+function organizers(value: unknown): string[] {
+  const names = list(value).map((entry) => (typeof entry === "string" ? text(entry) : isObject(entry) ? text(entry.name) : undefined));
+  return [...new Set(names.filter((name): name is string => name !== undefined))];
 }
 
 function image(value: unknown): string | undefined {
@@ -249,9 +246,35 @@ function canonical(html: string): string | undefined {
   return undefined;
 }
 
-function date(value: unknown): string | undefined {
-  const raw = text(value);
-  return raw && !Number.isNaN(Date.parse(raw)) ? raw : undefined;
+function timezoneFor(start: string, explicit?: string): string {
+  if (explicit && validZone(explicit)) return explicit;
+  const offset = /([+-])(\d{2}):?(\d{2})$/.exec(start);
+  if (!offset) return DEFAULT_TIMEZONE;
+  const minutes = (offset[1] === "-" ? -1 : 1) * (Number(offset[2]) * 60 + Number(offset[3]));
+  const instant = Date.parse(start);
+  if (minutes === 0 || toZonedIso(instant, DEFAULT_TIMEZONE).endsWith(offset[0].replace(/(\d{2})(\d{2})$/, "$1:$2"))) {
+    return DEFAULT_TIMEZONE;
+  }
+  if (minutes % 60 !== 0) return "UTC";
+  const hours = -minutes / 60;
+  return `Etc/GMT${hours >= 0 ? "+" : ""}${hours}`;
+}
+
+function validZone(zone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: zone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function times(start: string, end: string | undefined, timezone: string): { startsAt: string; endsAt?: string } {
+  const endMs = end ? Date.parse(end) : NaN;
+  return {
+    startsAt: toZonedIso(Date.parse(start), timezone),
+    endsAt: Number.isNaN(endMs) ? undefined : toZonedIso(endMs, timezone),
+  };
 }
 
 function text(value: unknown): string | undefined {

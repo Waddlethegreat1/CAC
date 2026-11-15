@@ -1,9 +1,9 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { jsonld, parseEventPage } from "./jsonld";
+import { jsonldAdapter, parseEventPage } from "./jsonld";
 
-const root = join(__dirname, "../../fixtures/jsonld");
+const files = import.meta.glob<string>("../../fixtures/jsonld/*/*.{html,json}", { query: "?raw", import: "default", eager: true });
+const sites = [...new Set(Object.keys(files).map((path) => path.split("/").at(-2)!))].sort();
+const fixture = (site: string, name: string) => files[`../../fixtures/jsonld/${site}/${name}`];
 
 function stubHttp(pages: Record<string, string>) {
   return {
@@ -16,13 +16,16 @@ function stubHttp(pages: Record<string, string>) {
 }
 
 describe("jsonld fixtures", () => {
-  for (const site of readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory())) {
-    it(site.name, async () => {
-      const dir = join(root, site.name);
-      const { url } = JSON.parse(readFileSync(join(dir, "source.json"), "utf8")) as { url: string };
-      const html = readFileSync(join(dir, "page.html"), "utf8");
-      const expected = JSON.parse(readFileSync(join(dir, "expected.json"), "utf8"));
-      expect(await jsonld.fetch({ url }, stubHttp({ [url]: html }))).toEqual(expected);
+  it("covers the four sites plus the meta fallback", () => {
+    expect(sites).toEqual(["eventbrite", "luma", "meetup", "partiful", "partiful-meta"]);
+  });
+
+  for (const site of sites) {
+    it(site, async () => {
+      const { url } = JSON.parse(fixture(site, "source.json")) as { url: string };
+      const http = stubHttp({ [url]: fixture(site, "page.html") });
+      const events = await jsonldAdapter.fetch({ source: "jsonld", name: site, url }, http);
+      expect(events).toEqual(JSON.parse(fixture(site, "expected.json")));
     });
   }
 });
@@ -65,7 +68,7 @@ describe("jsonld parsing", () => {
     );
     const events = parseEventPage(html, "https://example.com/");
     expect(events.map((event) => event.url)).toEqual(["https://example.com/mixed"]);
-    expect(events[0].location).toEqual({ name: "Noisebridge", address: "272 Capp St, San Francisco, CA" });
+    expect(events[0].location).toEqual({ online: false, name: "Noisebridge", address: "272 Capp St, San Francisco, CA" });
   });
 
   it("skips events marked private and pages marked noindex", () => {
@@ -75,7 +78,7 @@ describe("jsonld parsing", () => {
     expect(parseEventPage(noindex, "https://example.com/")).toEqual([]);
   });
 
-  it("maps offers, organizer, geo and image objects", () => {
+  it("maps organizers, postal address, geo and image objects", () => {
     const html = page({
       ...base,
       location: {
@@ -84,10 +87,6 @@ describe("jsonld parsing", () => {
         address: { "@type": "PostalAddress", streetAddress: "1 Main St", addressLocality: "Oakland", addressRegion: "CA" },
         geo: { "@type": "GeoCoordinates", latitude: "37.8", longitude: "-122.27" },
       },
-      offers: [
-        { "@type": "Offer", price: "15.00", priceCurrency: "usd" },
-        { "@type": "AggregateOffer", lowPrice: 5, highPrice: 40 },
-      ],
       organizer: [{ "@type": "Organization", name: "Bay Hackers" }, { "@type": "Person", name: "Someone" }],
       image: { "@type": "ImageObject", url: "/cover.png" },
     });
@@ -96,14 +95,36 @@ describe("jsonld parsing", () => {
         source: "jsonld",
         sourceId: "https://example.com/e",
         title: "Hack Night",
-        startsAt: "2026-12-01T18:00:00-08:00",
-        location: { name: "Venue", address: "1 Main St, Oakland, CA", lat: 37.8, lng: -122.27 },
+        description: "",
         url: "https://example.com/e",
+        startsAt: "2026-12-01T18:00:00-08:00",
+        timezone: "America/Los_Angeles",
+        location: {
+          online: false,
+          name: "Venue",
+          address: "1 Main St, Oakland, CA",
+          city: "Oakland",
+          region: "CA",
+          lat: 37.8,
+          lng: -122.27,
+        },
         organizer: "Bay Hackers",
-        price: { min: 5, max: 40, currency: "USD" },
+        hosts: ["Bay Hackers", "Someone"],
         imageUrl: "https://example.com/cover.png",
       },
     ]);
+  });
+
+  it("converts UTC times to the event timezone and keeps an explicit zone", () => {
+    const utc = parseEventPage(page({ ...base, startDate: "2026-07-01T01:00:00.000Z" }), "https://example.com/");
+    expect([utc[0].startsAt, utc[0].timezone]).toEqual(["2026-06-30T18:00:00-07:00", "America/Los_Angeles"]);
+    const ny = parseEventPage(page({ ...base, startDate: "2026-12-01T18:00:00-05:00" }), "https://example.com/");
+    expect([ny[0].startsAt, ny[0].timezone]).toEqual(["2026-12-01T18:00:00-05:00", "Etc/GMT+5"]);
+    const named = parseEventPage(
+      page({ ...base, startDate: "2026-12-01T18:00:00-05:00", scheduleTimezone: "America/New_York" }),
+      "https://example.com/",
+    );
+    expect([named[0].startsAt, named[0].timezone]).toEqual(["2026-12-01T18:00:00-05:00", "America/New_York"]);
   });
 
   it("returns nothing from metadata without a start time", () => {
