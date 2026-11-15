@@ -88,6 +88,7 @@ Revyl config lives in `app/.revyl/config.yaml`, with the iOS app `Scout iOS` lin
 | `saved-screen` | Saved tab: empty state, a saved event, unsave with Undo |
 | `profile-edit` | Profile tab: edit interests, area and distance; feed follows |
 | `investor-onboarding-home` | Investor onboarding, the Scouting tab, investor event detail |
+| `paste-a-link` | Add an event by link: validation errors, then the dev fixture `https://nautical-sheep-358.convex.site/fixtures/scout-test-event` (needs `ENABLE_TEST_FIXTURES=1` on the deployment) |
 
 Most tests start with the shared `onboard-student` module (`app/.revyl/modules/`), which onboards a fresh install as a student in Palo Alto.
 
