@@ -7,6 +7,7 @@ import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, Share, Sty
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { EmptyState } from "@/components/feed/empty-state";
+import { EventPrep } from "@/components/event-prep";
 import { Toast, useToast } from "@/components/feed/toast";
 import { AlertIcon, BackIcon, BookmarkIcon, CalendarIcon, ChartIcon, CheckIcon, LinkIcon, PeopleIcon, PinIcon, ShareIcon, SparkIcon } from "@/components/icons";
 import { colors, EVENT_TYPE_META, INVESTOR_SOME_MIN, layout, radius, shadow, type } from "@/constants/theme";
@@ -188,6 +189,8 @@ export default function EventDetail() {
             <Text style={styles.btnText}>Share</Text>
           </Pressable>
         </View>
+
+        <EventPrep key={event._id} event={event} deviceId={deviceId} />
 
         <View testID="investor-signal" accessibilityLabel="Investor signal" style={[styles.signal, tier === "low" && styles.signalLow]}>
           <View style={styles.signalHead}>

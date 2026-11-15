@@ -154,4 +154,33 @@ export default defineSchema({
     .index("by_user", ["userId", "savedAt"])
     .index("by_user_event", ["userId", "eventId"])
     .index("by_event", ["eventId"]),
+
+  prep_briefings: defineTable({
+    eventId: v.id("events"),
+    fingerprint: v.string(),
+    value: v.object({
+      summary: v.string(),
+      people: v.array(v.string()),
+      questions: v.array(v.string()),
+      tip: v.string(),
+      source: v.union(v.literal("template"), v.literal("model")),
+    }),
+  }).index("by_event", ["eventId"]),
+
+  prep_followups: defineTable({
+    userId: v.id("users"),
+    eventId: v.id("events"),
+    fingerprint: v.string(),
+    value: v.object({
+      recipient: v.string(),
+      linkedin: v.string(),
+      email: v.string(),
+      source: v.union(v.literal("template"), v.literal("model")),
+    }),
+  }).index("by_user_event", ["userId", "eventId"]),
+
+  prep_rates: defineTable({
+    userId: v.id("users"),
+    requests: v.array(v.number()),
+  }).index("by_user", ["userId"]),
 });
