@@ -2,10 +2,10 @@
 
 _meta:
     remote_id: 8e09284e-99b2-44ae-99e5-65b872e0f5c8
-    remote_version: 4
-    local_version: 4
-    last_synced_at: "2026-11-15T19:01:17Z"
-    checksum: 5ce331b68ad505609123874f9fd2f2b1416600b47587f5d70e945c0c22595578
+    remote_version: 5
+    local_version: 5
+    last_synced_at: "2026-11-15T21:55:36Z"
+    checksum: 7e906f97f2f87ea5403ed765f8dbffff748847b298ae02922db7659fabb2250d
 test:
     metadata:
         name: investor-onboarding-home
@@ -20,18 +20,25 @@ test:
           step_description: A welcome screen says "Be in the room when it happens" and shows a "Get started" button.
         - type: instructions
           step_description: Tap the "Get started" button.
-        - type: validation
-          step_description: The onboarding screen says "Find the rooms where startups happen" and offers an "I'm a student" option and an "I'm an investor" option.
+        - type: code_execution
+          variable_name: email
+          script: e2e-email
         - type: instructions
-          step_description: Tap the "I'm an investor" option, then tap Continue.
+          step_description: Tap "Looking for Talent", then tap Continue.
         - type: validation
-          step_description: A screen titled "What are you into" shows interest chips, and Pitch competitions, VC & fundraising and AI & ML are already selected.
+          step_description: A screen titled "About you" says "Tell us who's scouting" and shows Name, Email, Phone, Affiliation, LinkedIn, Password and Confirm password fields.
+        - type: instructions
+          step_description: Type "Scout E2E" in the Name field and "{{email}}" in the Email field.
+        - type: instructions
+          step_description: Type "ScoutE2E-pass-2026" in the Password field and "ScoutE2E-pass-2026" in the Confirm password field, then dismiss the keyboard.
+        - type: validation
+          step_description: Below the fields, a "What are you into" section shows Pitch competitions, VC & fundraising and AI & ML already selected.
         - type: instructions
           step_description: Tap Continue.
         - type: instructions
           step_description: Tap the "San Francisco" area chip, then tap the "Show my events" button.
         - type: validation
-          step_description: The app shows a home screen, and the bottom tab bar includes an Investor tab beside Feed, Saved and Profile.
+          step_description: The app shows a home screen, and the bottom tab bar includes an Investor tab beside Feed, Map, Saved and Profile.
         - type: instructions
           step_description: Tap the Investor tab in the bottom tab bar.
         - type: validation

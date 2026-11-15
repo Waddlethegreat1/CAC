@@ -7,8 +7,8 @@ test:
     build:
         name: Scout iOS
     blocks:
-        - type: instructions
-          step_description: If onboarding appears, choose Student, continue with Hackathons and Pitch competitions, select Palo Alto, and tap Show my events.
+        - type: module_import
+          module: "onboard-student"
         - type: validation
           step_description: The For you feed shows upcoming event cards, each with a separate I'm going button.
         - type: instructions

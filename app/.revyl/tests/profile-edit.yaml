@@ -2,10 +2,10 @@
 
 _meta:
     remote_id: 0068d457-9401-4c1a-9c1e-a0a8b1bc322c
-    remote_version: 3
-    local_version: 3
-    last_synced_at: "2026-11-15T19:01:15Z"
-    checksum: c4b78ac958228a0b336ea225f7ea4aa67c8ae466727076473c9909f42e0fb034
+    remote_version: 4
+    local_version: 4
+    last_synced_at: "2026-11-15T21:55:45Z"
+    checksum: 2447a603db41b8031a80010a1a5d9791867301d6551402cd59b9b7e3648c44af
 test:
     metadata:
         name: profile-edit
@@ -21,7 +21,7 @@ test:
         - type: instructions
           step_description: Tap the Profile tab in the bottom tab bar.
         - type: validation
-          step_description: A Profile screen shows "I am" with Student selected, an Interests section, and a Location section with Area set to "Palo Alto" and a Distance choice.
+          step_description: A Profile screen shows "I am" with Talent selected, an Interests section, and a Location section with Area set to "Palo Alto" and a Distance choice.
         - type: instructions
           step_description: Tap the "Edit interests" button, tap the "Climate" interest chip, then tap "Save interests".
         - type: validation

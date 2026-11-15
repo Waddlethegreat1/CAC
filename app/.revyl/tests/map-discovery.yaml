@@ -2,10 +2,10 @@
 
 _meta:
     remote_id: f8fbd4fa-6983-4de8-9863-6fd59a80a75b
-    remote_version: 1
-    local_version: 1
-    last_synced_at: "2026-11-15T20:51:12Z"
-    checksum: 9bcc092ee3c74656c5983892c60cd6c295dee41cc2f26c22088f0411f5d4d355
+    remote_version: 2
+    local_version: 2
+    last_synced_at: "2026-11-15T21:55:42Z"
+    checksum: 295540fa438f84ad350216f40cf64b322cb673927b98f938622e056cdbf9dbfc
 test:
     metadata:
         name: map-discovery
@@ -15,12 +15,8 @@ test:
     build:
         name: Scout iOS
     blocks:
-        - type: validation
-          step_description: A welcome screen says "Be in the room when it happens" and shows a "Get started" button.
-        - type: instructions
-          step_description: Tap the "Get started" button.
-        - type: instructions
-          step_description: Complete onboarding as a student using Palo Alto if onboarding is shown. Do not grant location permission.
+        - type: module_import
+          module: onboard-student
         - type: instructions
           step_description: Tap the Map tab.
         - type: validation

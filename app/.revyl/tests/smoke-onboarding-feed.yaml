@@ -2,10 +2,10 @@
 
 _meta:
     remote_id: 11a20e59-fd8b-42b7-ae37-98753d03f797
-    remote_version: 3
-    local_version: 3
-    last_synced_at: "2026-11-15T19:01:02Z"
-    checksum: edac3d072d9912be04908293d49c2e6333fb29c2c83ba485643e6cf16eadd28c
+    remote_version: 4
+    local_version: 4
+    last_synced_at: "2026-11-15T21:55:30Z"
+    checksum: 93a46b14e4dc24db0b284acbf8c822d9bec2dd6b10081b0ec146802df5f51608
 test:
     metadata:
         name: smoke-onboarding-feed
@@ -15,30 +15,8 @@ test:
     build:
         name: Scout iOS
     blocks:
-        - type: validation
-          step_description: A welcome screen says "Be in the room when it happens" and shows a "Get started" button.
-        - type: instructions
-          step_description: Tap the "Get started" button.
-        - type: validation
-          step_description: The onboarding screen says "Find the rooms where startups happen" and shows an "I'm a student" option and an "I'm an investor" option.
-        - type: instructions
-          step_description: Tap the Student option.
-        - type: instructions
-          step_description: Tap the Continue button at the bottom of the screen.
-        - type: validation
-          step_description: A screen titled "What are you into" shows interest chips, and Hackathons and Pitch competitions are already selected.
-        - type: instructions
-          step_description: Tap the "AI & ML" interest chip.
-        - type: instructions
-          step_description: Tap the Continue button.
-        - type: validation
-          step_description: A screen titled "Where should we look" shows a "Use my location" button and a list of areas.
-        - type: instructions
-          step_description: Tap the "Palo Alto" city chip.
-        - type: instructions
-          step_description: Tap the "Show my events" button.
-        - type: validation
-          step_description: The feed shows a "For you" heading with a location pill that reads "Palo Alto", filter chips including "Investors likely", and at least three event cards under a date section such as "Today", "This week", or "Later", each with a date tile and a title.
+        - type: module_import
+          module: onboard-student
         - type: instructions
           step_description: Tap the first event card in the list.
         - type: validation
