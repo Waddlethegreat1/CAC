@@ -1,11 +1,9 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test } from "vitest";
 import calendarExpected from "../../fixtures/luma/genai-collective.expected.json";
 import calendarHtml from "../../fixtures/luma/genai-collective.html?raw";
 import sfExpected from "../../fixtures/luma/sf.expected.json";
 import sfHtml from "../../fixtures/luma/sf.html?raw";
 import { lumaAdapter, parseLumaPage } from "./luma";
-
-afterEach(() => vi.unstubAllGlobals());
 
 describe("luma adapter", () => {
   test("parses a saved city page and a saved calendar page", () => {
@@ -25,7 +23,9 @@ describe("luma adapter", () => {
   });
 
   test("fetch reads the feed URL", async () => {
-    vi.stubGlobal("fetch", async () => new Response(sfHtml));
-    expect(await lumaAdapter.fetch({ source: "luma", name: "Luma SF", url: "https://luma.com/sf" })).toEqual(sfExpected);
+    const requested: string[] = [];
+    const http = { text: async (url: string) => (requested.push(url), sfHtml) };
+    expect(await lumaAdapter.fetch({ source: "luma", name: "Luma SF", url: "https://luma.com/sf" }, http)).toEqual(sfExpected);
+    expect(requested).toEqual(["https://luma.com/sf"]);
   });
 });

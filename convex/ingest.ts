@@ -3,6 +3,7 @@ import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { ADAPTERS } from "./adapters";
+import { basicHttp } from "./lib/http";
 import { rawEvent } from "./lib/rawEvent";
 import { ensureDefaults, upsertEvent, upsertRawListing } from "./lib/store";
 import { normalize } from "./normalize";
@@ -78,7 +79,7 @@ export const runFeed = internalAction({
     if (!adapter) throw new Error(`No adapter for source ${feed.source}`);
     const startedAt = Date.now();
     try {
-      const raws = await adapter.fetch(feed);
+      const raws = await adapter.fetch(feed, basicHttp);
       const items = await Promise.all(raws.map(async (raw) => ({ raw, event: await normalize(raw) })));
       for (let i = 0; i < items.length; i += BATCH) {
         await ctx.runMutation(internal.ingest.store, { feedId, items: items.slice(i, i + BATCH) });

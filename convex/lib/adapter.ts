@@ -3,7 +3,11 @@ import type { RawEvent } from "./rawEvent";
 
 export type Feed = Pick<Doc<"feeds">, "source" | "name" | "url">;
 
+export type Http = {
+  text(url: string, accept?: string): Promise<string>;
+};
+
 export interface Adapter {
   source: string;
-  fetch(feed: Feed): Promise<RawEvent[]>;
+  fetch(feed: Feed, http: Http): Promise<RawEvent[]>;
 }

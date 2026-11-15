@@ -1,5 +1,4 @@
 import type { Adapter } from "../lib/adapter";
-import { politeFetchText } from "../lib/http";
 import type { RawEvent } from "../lib/rawEvent";
 import { toZonedIso, zonedToUtc } from "../lib/time";
 
@@ -86,12 +85,12 @@ export function parseDevpostPage(json: { hackathons?: DevpostHackathon[] }): Raw
 
 export const devpostAdapter: Adapter = {
   source: "devpost",
-  async fetch(feed) {
+  async fetch(feed, http) {
     const byId = new Map<string, RawEvent>();
     for (let page = 1; page <= MAX_PAGES; page++) {
       const url = new URL(feed.url);
       url.searchParams.set("page", String(page));
-      const parsed = parseDevpostPage(JSON.parse(await politeFetchText(url.toString(), "application/json")));
+      const parsed = parseDevpostPage(JSON.parse(await http.text(url.toString(), "application/json")));
       if (parsed.length === 0) break;
       parsed.forEach((e) => byId.set(e.sourceId, e));
     }

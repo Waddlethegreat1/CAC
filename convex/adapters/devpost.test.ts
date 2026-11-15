@@ -1,11 +1,9 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test } from "vitest";
 import inPersonExpected from "../../fixtures/devpost/in-person-page-1.expected.json";
 import inPersonPage from "../../fixtures/devpost/in-person-page-1.json";
 import onlineExpected from "../../fixtures/devpost/online-page-1.expected.json";
 import onlinePage from "../../fixtures/devpost/online-page-1.json";
 import { devpostAdapter, parseDevpostDates, parseDevpostPage } from "./devpost";
-
-afterEach(() => vi.unstubAllGlobals());
 
 describe("devpost adapter", () => {
   test("parses saved in-person and online pages into RawEvents", () => {
@@ -34,16 +32,16 @@ describe("devpost adapter", () => {
 
   test("fetch pages through the feed URL until a page comes back empty", async () => {
     const requested: string[] = [];
-    vi.stubGlobal("fetch", async (url: string) => {
-      requested.push(url);
-      const page = new URL(url).searchParams.get("page");
-      return new Response(JSON.stringify(page === "1" ? inPersonPage : { hackathons: [] }));
-    });
-    const events = await devpostAdapter.fetch({
-      source: "devpost",
-      name: "test",
-      url: "https://devpost.com/api/hackathons?challenge_type[]=in-person",
-    });
+    const http = {
+      text: async (url: string) => {
+        requested.push(url);
+        return JSON.stringify(new URL(url).searchParams.get("page") === "1" ? inPersonPage : { hackathons: [] });
+      },
+    };
+    const events = await devpostAdapter.fetch(
+      { source: "devpost", name: "test", url: "https://devpost.com/api/hackathons?challenge_type[]=in-person" },
+      http,
+    );
     expect(events).toEqual(inPersonExpected);
     expect(requested).toHaveLength(2);
     expect(requested[0]).toContain("page=1");

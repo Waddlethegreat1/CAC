@@ -1,5 +1,4 @@
 import type { Adapter } from "../lib/adapter";
-import { politeFetchText } from "../lib/http";
 import type { RawEvent } from "../lib/rawEvent";
 import { toZonedIso } from "../lib/time";
 
@@ -89,5 +88,5 @@ export function parseLumaPage(html: string): RawEvent[] {
 
 export const lumaAdapter: Adapter = {
   source: "luma",
-  fetch: async (feed) => parseLumaPage(await politeFetchText(feed.url, "text/html")),
+  fetch: async (feed, http) => parseLumaPage(await http.text(feed.url, "text/html")),
 };
