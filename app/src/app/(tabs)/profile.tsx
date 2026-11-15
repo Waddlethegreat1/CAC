@@ -215,6 +215,14 @@ function ProfileForm({ user }: { user: User }) {
         </View>
       </View>
 
+      <Text style={styles.group}>Missing an event</Text>
+      <View style={styles.card}>
+        <Pressable testID="profile-add-event" accessibilityRole="button" onPress={() => router.push("/submit")} style={styles.prow}>
+          <Text style={styles.body}>Add an event by link</Text>
+          <Icon name="chevron-right" size={16} color={colors.subtle} />
+        </Pressable>
+      </View>
+
       <Text style={styles.error} accessibilityRole="alert">
         {error ?? ""}
       </Text>
