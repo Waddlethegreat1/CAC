@@ -37,7 +37,7 @@ export async function ensureDefaults(ctx: MutationCtx) {
       .query("feeds")
       .withIndex("by_url", (q) => q.eq("url", feed.url))
       .unique();
-    if (!existing) await ctx.db.insert("feeds", { ...feed, enabled: true });
+    if (!existing) await ctx.db.insert("feeds", { ...feed, enabled: feed.enabled ?? true });
   }
   for (const [order, interest] of INTERESTS.entries()) {
     const existing = await ctx.db
