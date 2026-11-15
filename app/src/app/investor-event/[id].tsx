@@ -14,9 +14,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { scout } from "@/convex/lib/scouting";
 import { useDeviceId } from "@/lib/device";
-import { formatRange } from "@/lib/format";
-
-const SOURCE_LABEL: Record<string, string> = { devpost: "Devpost", luma: "Luma", seed: "Scout picks" };
+import { formatRange, SOURCE_LABEL } from "@/lib/format";
 
 const turnoutLabel = (d: number) => (d >= 0.8 ? "Mostly students" : d >= 0.5 ? "Strong student turnout" : "Some students");
 

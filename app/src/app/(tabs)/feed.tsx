@@ -10,6 +10,7 @@ import { EventCard } from "@/components/event-card";
 import { EmptyState } from "@/components/feed/empty-state";
 import { Segmented } from "@/components/segmented";
 import { SkeletonCards } from "@/components/feed/skeleton";
+import { AddEventButton } from "@/components/links/add-event-button";
 import { AlertIcon, PinIcon, SearchIcon, SignalIcon } from "@/components/icons";
 import { colors, layout, radius, type } from "@/constants/theme";
 import { api } from "@/convex/_generated/api";
@@ -100,6 +101,7 @@ export default function Feed() {
             {feed?.city ?? "Nearby"} · {radius}
           </Text>
         </Pressable>
+        <AddEventButton />
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
         {FILTERS.map((f) => (
