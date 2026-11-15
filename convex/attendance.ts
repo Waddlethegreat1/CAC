@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internalQuery, mutation, query } from "./_generated/server";
 import { ended, eventDoc, investors, MAX_COMMITMENTS, recordFor, recordsFor, saveResponse, userFor, writeGoing } from "./attendanceModel";
 
@@ -25,7 +25,9 @@ export const setGoing = mutation({
   handler: async (ctx, { deviceId, eventId, going }) => {
     const user = await userFor(ctx, deviceId);
     if (!user) throw new Error("Finish onboarding before committing to events");
-    if (!await ctx.db.get(eventId)) throw new Error("Event not found");
+    const event = await ctx.db.get(eventId);
+    if (!event) throw new Error("Event not found");
+    if (going && ended(event, Date.now())) throw new ConvexError({ code: "event_ended", message: "This event has already ended, so you can't mark it Going" });
     await writeGoing(ctx, user._id, eventId, going);
     return null;
   },
