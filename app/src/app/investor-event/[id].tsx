@@ -7,11 +7,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Icon } from "@/components/icon";
 import { investorTier } from "@/components/investor-badge";
-import { scout } from "@/components/investor/scouting";
 import { SignalPanel } from "@/components/investor/signal-panel";
 import { colors, EVENT_TYPE_META, layout, radius, shadow, type } from "@/constants/theme";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { scout } from "@/convex/lib/scouting";
 import { useDeviceId } from "@/lib/device";
 import { formatRange } from "@/lib/format";
 

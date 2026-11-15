@@ -1,3 +1,4 @@
+import { useQuery } from "convex/react";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -5,10 +6,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Icon } from "@/components/icon";
 import { FilterRow, type Option } from "@/components/investor/filter-bar";
 import { InvestorCard } from "@/components/investor/investor-card";
-import { applyFilters, rankForInvestors, schoolsIn, weekShortlist, type DateFilter, type Filters, type TypeFilter } from "@/components/investor/scouting";
+import { applyFilters, schoolsIn, weekShortlist, type DateFilter, type Filters, type TypeFilter } from "@/components/investor/scouting";
 import { WeekShortlist } from "@/components/investor/shortlist";
-import { useScoutEvents } from "@/components/investor/use-scout-events";
 import { colors, layout, radius, type } from "@/constants/theme";
+import { api } from "@/convex/_generated/api";
 import { useDeviceId } from "@/lib/device";
 
 const TYPES: Option<TypeFilter>[] = [
@@ -29,17 +30,17 @@ const INITIAL: Filters = { school: null, type: "all", date: "any" };
 
 export default function InvestorHome() {
   const deviceId = useDeviceId();
-  const events = useScoutEvents(deviceId);
+  const result = useQuery(api.investor.ranked, deviceId ? { deviceId } : "skip");
   const [filters, setFilters] = useState<Filters>(INITIAL);
   const [now] = useState(() => Date.now());
 
-  const ranked = useMemo(() => (events ? rankForInvestors(events, now) : []), [events, now]);
+  const ranked = useMemo(() => result?.events ?? [], [result]);
   const shortlist = useMemo(() => weekShortlist(ranked, now), [ranked, now]);
   const visible = useMemo(() => applyFilters(ranked, filters, now), [ranked, filters, now]);
   const schools: Option<string>[] = [{ value: ALL, label: "All schools" }, ...schoolsIn(ranked).map((s) => ({ value: s, label: s }))];
   const filtered = filters.school !== null || filters.type !== "all" || filters.date !== "any";
 
-  if (events === undefined) {
+  if (result === undefined) {
     return (
       <SafeAreaView style={styles.center}>
         <ActivityIndicator color={colors.ember} />
@@ -67,10 +68,10 @@ export default function InvestorHome() {
       <FlatList
         testID="investor-list"
         data={visible}
-        keyExtractor={(s) => s.event._id}
+        keyExtractor={(e) => e._id}
         renderItem={({ item }) => (
           <View style={styles.item}>
-            <InvestorCard item={item} />
+            <InvestorCard event={item} />
           </View>
         )}
         ListHeaderComponent={header}
@@ -79,7 +80,7 @@ export default function InvestorHome() {
             <View style={styles.glyph}>
               <Icon name="trending-up" size={22} color={colors.gold} />
             </View>
-            <Text style={styles.emptyLine}>{events === null ? "Finish onboarding to start scouting" : filtered ? "Nothing matches these filters" : "No student events yet"}</Text>
+            <Text style={styles.emptyLine}>{filtered ? "Nothing matches these filters" : "No student events yet"}</Text>
             <Text style={styles.emptySub}>{filtered ? "Try another school or date, or clear the filters" : "We check new listings every 30 minutes"}</Text>
             {filtered ? (
               <Pressable testID="clear-filters" accessibilityRole="button" onPress={() => setFilters(INITIAL)} style={styles.clear}>

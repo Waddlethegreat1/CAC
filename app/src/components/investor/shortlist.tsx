@@ -2,17 +2,17 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { InvestorMeter } from "@/components/investor-badge";
 import { openInvestorEvent } from "@/components/investor/investor-card";
-import type { Scouted } from "@/components/investor/scouting";
+import type { InvestorEvent } from "@/components/investor/scouting";
 import { colors, layout, radius, shadow, type } from "@/constants/theme";
 import { relativeDay } from "@/lib/format";
 
-export function WeekShortlist({ items }: { items: Scouted[] }) {
+export function WeekShortlist({ items }: { items: InvestorEvent[] }) {
   if (!items.length) return null;
   return (
     <View testID="week-shortlist" style={styles.wrap}>
       <Text style={styles.heading}>Worth attending this week</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-        {items.map(({ event, school, reasons }) => (
+        {items.map((event) => (
           <Pressable
             key={event._id}
             testID={`shortlist-${event._id}`}
@@ -31,11 +31,11 @@ export function WeekShortlist({ items }: { items: Scouted[] }) {
               {event.title}
             </Text>
             <Text style={styles.sub} numberOfLines={1}>
-              {[school, event.organizer].filter(Boolean).join(" · ")}
+              {[event.school, event.organizer].filter(Boolean).join(" · ")}
             </Text>
-            {reasons[0] ? (
+            {event.reasons[0] ? (
               <Text style={styles.reason} numberOfLines={1}>
-                {reasons[0]}
+                {event.reasons[0]}
               </Text>
             ) : null}
           </Pressable>

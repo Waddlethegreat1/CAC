@@ -3,14 +3,14 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Icon } from "@/components/icon";
 import { InvestorMeter } from "@/components/investor-badge";
-import type { Scouted } from "@/components/investor/scouting";
+import type { InvestorEvent } from "@/components/investor/scouting";
 import { colors, EVENT_TYPE_META, layout, radius, shadow, type } from "@/constants/theme";
 import { dateBadge, relativeDay } from "@/lib/format";
 
 export const openInvestorEvent = (id: string) => router.push({ pathname: "/investor-event/[id]", params: { id } });
 
-export function InvestorCard({ item }: { item: Scouted }) {
-  const { event, school, reasons } = item;
+export function InvestorCard({ event }: { event: InvestorEvent }) {
+  const { school, reasons } = event;
   const badge = dateBadge(event.startTime);
   return (
     <Pressable
