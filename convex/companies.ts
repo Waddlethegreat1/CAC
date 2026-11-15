@@ -5,7 +5,7 @@ import { checkContactField } from "./lib/contact";
 import { callerFor, isVerifiedHost, requireCaller, requireHost, requireHostCaller } from "./lib/identity";
 import { isAcademicDomain } from "./lib/freeMail";
 import {
-  claimOf, companyRole, companyView, eventSummary, fail, hostSlugs, isApproved, MAX_MEMBERSHIPS, membershipOf, MAX_ROWS, requireMember,
+  canReviewClaim, claimOf, companyRole, companyView, eventSummary, fail, hostSlugs, isApproved, MAX_MEMBERSHIPS, membershipOf, MAX_ROWS, requireMember,
   requireVerified, slugify, toCompany, toEvent,
 } from "./lib/connections";
 
@@ -165,7 +165,7 @@ export const get = query({
     members: v.array(v.object({ name: v.union(v.string(), v.null()), userId: v.optional(v.id("users")), role: v.optional(companyRole) })),
     pendingInvites: v.optional(v.array(v.object({ email: v.string(), createdAt: v.number() }))),
     joinRequests: v.optional(v.array(v.object({ userId: v.id("users"), name: v.union(v.string(), v.null()), workEmail: v.union(v.string(), v.null()), createdAt: v.number() }))),
-    pendingClaims: v.optional(v.array(v.object({ claimId: v.id("event_hosts"), event: eventSummary, requestedByName: v.union(v.string(), v.null()), createdAt: v.number() }))),
+    pendingClaims: v.optional(v.array(v.object({ claimId: v.id("event_hosts"), event: eventSummary, requestedByName: v.union(v.string(), v.null()), createdAt: v.number(), canReview: v.boolean() }))),
     hostedEvents: v.array(eventSummary),
   })),
   handler: async (ctx, { deviceId, companyId }) => {
@@ -189,7 +189,7 @@ export const get = query({
       })),
       pendingClaims: (await Promise.all(links.filter((l) => !isApproved(l)).map(async (l) => {
         const event = await ctx.db.get(l.eventId);
-        return event ? { claimId: l._id, event: toEvent(event), requestedByName: await nameOf(l.claimedBy), createdAt: l.createdAt } : null;
+        return event ? { claimId: l._id, event: toEvent(event), requestedByName: await nameOf(l.claimedBy), createdAt: l.createdAt, canReview: canReviewClaim(l, company, user!) } : null;
       }))).filter((c) => c !== null),
     } : {};
     return {

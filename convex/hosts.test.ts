@@ -59,6 +59,7 @@ describe("work email verification", () => {
     const started = await t.action(api.hosts.startVerification, { deviceId: "h", workEmail: " Hana@CS.Stanford.edu " });
     expect(started).toMatchObject({ sentTo: "hana@cs.stanford.edu", verificationMode: "dev", expiresAt: NOW - 10 * DAY + 10 * 60_000 });
     expect(started.devCode).toMatch(/^\d{6}$/);
+    expect((await t.query(api.hosts.status, { deviceId: "h" })).pending).toEqual({ email: "hana@cs.stanford.edu", expiresAt: started.expiresAt, attemptsLeft: 5, verificationMode: "dev" });
     expect(await t.run((ctx) => ctx.db.query("email_verifications").collect())).toMatchObject([{ email: "hana@cs.stanford.edu", attempts: 0 }]);
     expect(JSON.stringify(await t.run((ctx) => ctx.db.query("email_verifications").collect()))).not.toContain(started.devCode);
     expect(await t.action(api.hosts.confirmVerification, { deviceId: "h", code: started.devCode! })).toEqual({ workEmail: "hana@cs.stanford.edu", workDomain: "cs.stanford.edu", verificationMode: "dev" });
@@ -87,10 +88,12 @@ describe("work email verification", () => {
     const mailed = body.text.match(/\d{6}/)[0];
     expect(await t.action(api.hosts.confirmVerification, { deviceId: "h", code: mailed })).toMatchObject({ verificationMode: "email" });
     expect((await t.query(api.hosts.status, { deviceId: "h" })).verificationMode).toBe("email");
+    await t.action(api.hosts.startVerification, { deviceId: "h", workEmail: "hana@acme.dev" });
+    expect((await t.query(api.hosts.status, { deviceId: "h" })).pending).toMatchObject({ verificationMode: "email" });
 
     fetchMock.mockResolvedValueOnce(new Response("nope", { status: 500 }));
     expect(await code(t.action(api.hosts.startVerification, { deviceId: "h", workEmail: "hana@acme.dev" }))).toBe("email_send_failed");
-    expect(await t.run((ctx) => ctx.db.query("email_verifications").collect())).toEqual([]);
+    expect(await t.run((ctx) => ctx.db.query("email_verifications").collect())).toHaveLength(1);
   });
 
   test("wrong codes change nothing, five attempts lock the code, and codes expire after 10 minutes", async () => {
@@ -231,7 +234,10 @@ describe("event hosting claims", () => {
     expect(await code(t.query(api.hosts.eventMatches, { deviceId: "ana", eventId: unrelated, companyId: acme }))).toBe("forbidden");
     expect(await code(t.mutation(api.connections.expressInterest, { deviceId: "zoe", companyId: acme, eventId: unrelated }))).toBe("not_eligible");
     expect(await code(t.query(api.connections.talentProfile, { deviceId: "ana", companyId: acme, talentUserId: zoe }))).toBe("not_found");
-    expect((await t.query(api.companies.get, { deviceId: "ana", companyId: acme }))!).toMatchObject({ hostedEvents: [], pendingClaims: [{ claimId: pending.claimId, requestedByName: "Ana" }] });
+    expect((await t.query(api.companies.get, { deviceId: "ana", companyId: acme }))!).toMatchObject({ hostedEvents: [], pendingClaims: [{ claimId: pending.claimId, requestedByName: "Ana", canReview: false }] });
+    expect((await t.query(api.companies.get, { deviceId: "ben", companyId: acme }))!.pendingClaims).toMatchObject([{ claimId: pending.claimId, canReview: true }]);
+    expect((await t.query(api.hosts.hostingStatus, { deviceId: "ben", eventId: unrelated })).claim).toMatchObject({ status: "pending", canReview: true });
+    expect((await t.query(api.hosts.hostingStatus, { deviceId: "ana", eventId: unrelated })).claim).toMatchObject({ status: "pending", canReview: false });
     expect(await code(t.mutation(api.hosts.reviewClaim, { deviceId: "ana", claimId: pending.claimId, approve: true }))).toBe("forbidden");
     await t.mutation(api.hosts.reviewClaim, { deviceId: "ben", claimId: pending.claimId, approve: true });
     expect((await t.query(api.hosts.eventMatches, { deviceId: "ana", eventId: unrelated, companyId: acme })).matches).toHaveLength(4);
@@ -249,11 +255,15 @@ describe("event hosting claims", () => {
     await t.mutation(api.connections.respond, { deviceId: "ben", connectionId: mutual.connectionId, accept: true });
     await t.mutation(api.connections.expressInterest, { deviceId: "zoe", companyId: acme, eventId: named });
     await t.mutation(api.connections.expressInterestInTalent, { deviceId: "ana", companyId: acme, talentUserId: kim, eventId: named });
+    const toAmy = await t.mutation(api.connections.expressInterestInTalent, { deviceId: "ana", companyId: acme, talentUserId: amy, eventId: named });
+    await t.mutation(api.connections.respond, { deviceId: "amy", connectionId: toAmy.connectionId, accept: false });
     const result = await t.query(api.hosts.eventMatches, { deviceId: "ben", eventId: named, companyId: acme });
     expect(result.event).toMatchObject({ _id: named });
     expect(result.matches.map((m) => [m.talent.userId, m.connection?.status ?? null, m.interested, m.mutual])).toEqual([
       [lee, "accepted", true, true], [zoe, "pending", true, false], [kim, "pending", false, false], [amy, null, false, false],
     ]);
+    expect(result.matches.map((m) => m.blockedUntil)).toEqual([null, null, null, expect.closeTo(NOW + 30 * DAY, -3)]);
+    expect((await t.query(api.hosts.hostingStatus, { deviceId: "ana", eventId: named })).claim).toMatchObject({ status: "approved", canReview: false });
     expect(result.matches[0]).toMatchObject({ talent: { name: "Lee", affiliation: "Cal", priorRoles: null }, attended: true, contact: null });
     expect(JSON.stringify(result)).not.toMatch(/secret|14155550100|personal\.test|"zoe"|"lee"/);
     await t.mutation(api.connections.setShareContact, { deviceId: "lee", connectionId: mutual.connectionId, shareContact: true });
