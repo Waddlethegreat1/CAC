@@ -1,7 +1,8 @@
 import type { Adapter } from "../lib/adapter";
 import { devpostAdapter } from "./devpost";
-import { jsonldAdapter } from "./jsonld";
+import { fixtureAdapter } from "./fixture";
 import { icalAdapter } from "./ical";
+import { jsonldAdapter } from "./jsonld";
 import { lumaAdapter } from "./luma";
 import { mlhAdapter } from "./mlh";
 
@@ -11,7 +12,16 @@ export const ADAPTERS: Record<string, Adapter> = {
   [lumaAdapter.source]: lumaAdapter,
   [mlhAdapter.source]: mlhAdapter,
   [icalAdapter.source]: icalAdapter,
+  [fixtureAdapter.source]: fixtureAdapter,
 };
+
+export const TIER_ADAPTERS: Record<string, Adapter> = {
+  "JSON-LD": jsonldAdapter,
+};
+
+export function resolveAdapter(feed: { source: string; tier?: string }): Adapter | undefined {
+  return ADAPTERS[feed.source] ?? (feed.tier ? TIER_ADAPTERS[feed.tier] : undefined);
+}
 
 export const DEFAULT_FEEDS: { source: string; name: string; url: string; intervalMinutes: number; enabled?: boolean }[] = [
   {
@@ -27,8 +37,8 @@ export const DEFAULT_FEEDS: { source: string; name: string; url: string; interva
     intervalMinutes: 720,
   },
   { source: "mlh", name: "MLH 2027 season", url: "https://www.mlh.com/seasons/2027/events", intervalMinutes: 720, enabled: false },
-  { source: "luma", name: "Luma San Francisco", url: "https://luma.com/sf", intervalMinutes: 180 },
-  { source: "luma", name: "Luma: The AI Collective", url: "https://luma.com/genai-collective", intervalMinutes: 360 },
-  { source: "luma", name: "Luma: Claude Community Events", url: "https://luma.com/claudecommunity", intervalMinutes: 360 },
-  { source: "luma", name: "Luma: Latent Space", url: "https://luma.com/ls", intervalMinutes: 720 },
+  { source: "luma", name: "Luma San Francisco", url: "https://luma.com/sf", intervalMinutes: 180, enabled: false },
+  { source: "luma", name: "Luma: The AI Collective", url: "https://luma.com/genai-collective", intervalMinutes: 360, enabled: false },
+  { source: "luma", name: "Luma: Claude Community Events", url: "https://luma.com/claudecommunity", intervalMinutes: 360, enabled: false },
+  { source: "luma", name: "Luma: Latent Space", url: "https://luma.com/ls", intervalMinutes: 720, enabled: false },
 ];

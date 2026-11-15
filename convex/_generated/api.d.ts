@@ -9,11 +9,13 @@
  */
 
 import type * as adapters_devpost from "../adapters/devpost.js";
+import type * as adapters_fixture from "../adapters/fixture.js";
 import type * as adapters_index from "../adapters/index.js";
 import type * as adapters_luma from "../adapters/luma.js";
 import type * as crons from "../crons.js";
 import type * as events from "../events.js";
 import type * as feed from "../feed.js";
+import type * as feeds from "../feeds.js";
 import type * as ingest from "../ingest.js";
 import type * as interests from "../interests.js";
 import type * as lib_adapter from "../lib/adapter.js";
@@ -22,6 +24,7 @@ import type * as lib_http from "../lib/http.js";
 import type * as lib_interests from "../lib/interests.js";
 import type * as lib_ranking from "../lib/ranking.js";
 import type * as lib_rawEvent from "../lib/rawEvent.js";
+import type * as lib_robots from "../lib/robots.js";
 import type * as lib_store from "../lib/store.js";
 import type * as lib_tagger from "../lib/tagger.js";
 import type * as lib_time from "../lib/time.js";
@@ -38,11 +41,13 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "adapters/devpost": typeof adapters_devpost;
+  "adapters/fixture": typeof adapters_fixture;
   "adapters/index": typeof adapters_index;
   "adapters/luma": typeof adapters_luma;
   crons: typeof crons;
   events: typeof events;
   feed: typeof feed;
+  feeds: typeof feeds;
   ingest: typeof ingest;
   interests: typeof interests;
   "lib/adapter": typeof lib_adapter;
@@ -51,6 +56,7 @@ declare const fullApi: ApiFromModules<{
   "lib/interests": typeof lib_interests;
   "lib/ranking": typeof lib_ranking;
   "lib/rawEvent": typeof lib_rawEvent;
+  "lib/robots": typeof lib_robots;
   "lib/store": typeof lib_store;
   "lib/tagger": typeof lib_tagger;
   "lib/time": typeof lib_time;
