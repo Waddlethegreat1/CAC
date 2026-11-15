@@ -1,6 +1,7 @@
 import type { Adapter } from "../lib/adapter";
 import { devpostAdapter } from "./devpost";
 import { jsonldAdapter } from "./jsonld";
+import { icalAdapter } from "./ical";
 import { lumaAdapter } from "./luma";
 import { mlhAdapter } from "./mlh";
 
@@ -9,6 +10,7 @@ export const ADAPTERS: Record<string, Adapter> = {
   [jsonldAdapter.source]: jsonldAdapter,
   [lumaAdapter.source]: lumaAdapter,
   [mlhAdapter.source]: mlhAdapter,
+  [icalAdapter.source]: icalAdapter,
 };
 
 export const DEFAULT_FEEDS: { source: string; name: string; url: string; intervalMinutes: number; enabled?: boolean }[] = [
