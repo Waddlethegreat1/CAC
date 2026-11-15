@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import { parseEventPage } from "./adapters/jsonld";
 import { SCOUT_TEST_EVENT_ID, SCOUT_TEST_EVENT_PATH, SCOUT_TEST_EVENT_TITLE, scoutTestEventTimes } from "./lib/fixtures";
+import { INVESTORS_LIKELY_MIN } from "./lib/ranking";
 import { normalize } from "./normalize";
 import schema from "./schema";
 
@@ -15,7 +16,7 @@ const DAY = 86_400_000;
 const sfStudent = {
   deviceId: "device-1",
   role: "student" as const,
-  interests: ["pitch"],
+  interests: ["hackathons"],
   city: "San Francisco",
   lat: 37.7749,
   lng: -122.4194,
@@ -69,7 +70,9 @@ describe("scout test event route", () => {
     expect(start - Date.now()).toBeGreaterThan(6 * DAY);
     expect(start - Date.now()).toBeLessThan(8 * DAY);
     const event = await normalize(raw);
-    expect(event).toMatchObject({ city: "San Francisco", eventType: "pitch_competition" });
+    expect(event).toMatchObject({ city: "San Francisco", eventType: "hackathon" });
+    expect(event!.investorScore).toBeLessThan(INVESTORS_LIKELY_MIN);
+    expect(event!.investorSignals).toEqual([]);
   });
 });
 
@@ -86,6 +89,9 @@ describe("submitting the route through links.submit", () => {
 
     const feed = await t.query(api.feed.ranked, { deviceId: sfStudent.deviceId });
     expect(feed?.events.map((e) => e._id)).toContain(event._id);
+    expect(event.investorScore).toBeLessThan(INVESTORS_LIKELY_MIN);
+    const investorsLikely = await t.query(api.feed.ranked, { deviceId: sfStudent.deviceId, filter: "investors" });
+    expect(investorsLikely?.events.map((e) => e._id)).not.toContain(event._id);
 
     const { _id, _creationTime, synthetic, ...copy } = event;
     const realId = await t.run((ctx) => ctx.db.insert("events", { ...copy, sourceId: "real-copy", url: "https://example.com/real", sources: undefined }));
@@ -99,6 +105,17 @@ describe("submitting the route through links.submit", () => {
 });
 
 describe("fixtures.purgeSynthetic", () => {
+  test("refuses to run unless ENABLE_TEST_FIXTURES is 1", async () => {
+    const t = convexTest(schema, modules);
+    stubFetch(t);
+    await t.action(api.links.submit, { deviceId: sfStudent.deviceId, url: ROUTE });
+    for (const value of [undefined, "0", "true"]) {
+      vi.stubEnv("ENABLE_TEST_FIXTURES", value);
+      await expect(t.mutation(internal.fixtures.purgeSynthetic, {})).rejects.toThrow(/ENABLE_TEST_FIXTURES/);
+    }
+    expect(await t.run((ctx) => ctx.db.query("events").collect())).toHaveLength(1);
+  });
+
   test("deletes synthetic events with their raw listings, link submissions, and saves, and nothing else", async () => {
     const t = convexTest(schema, modules);
     stubFetch(t);

@@ -7,10 +7,16 @@ import { sourcesOf } from "./normalize/dedupe";
 
 const BATCH = 100;
 
+/**
+ * Deletes synthetic fixture events and the rows that point at them. Only runs when ENABLE_TEST_FIXTURES is "1".
+ * Event deletions must go through the shared reassignEventRefs hook from cac#16 (or equivalent attendance
+ * cleanup) once it exists, so attendance rows never outlive their event.
+ */
 export const purgeSynthetic = internalMutation({
   args: {},
   returns: v.object({ events: v.number(), rawListings: v.number(), linkSubmissions: v.number(), saves: v.number(), more: v.boolean() }),
   handler: async (ctx) => {
+    if (process.env.ENABLE_TEST_FIXTURES !== "1") throw new Error("purgeSynthetic requires ENABLE_TEST_FIXTURES=1");
     const events = await ctx.db
       .query("events")
       .filter((q) => q.eq(q.field("synthetic"), true))
@@ -18,7 +24,7 @@ export const purgeSynthetic = internalMutation({
     const purged = new Set<Id<"events">>(events.map((e) => e._id));
     const counts = { events: 0, rawListings: 0, linkSubmissions: 0, saves: 0 };
     for (const event of events) {
-      // TODO: switch to the shared reassignEventRefs hook from cac#16 once it merges.
+      // TODO: replace with the shared reassignEventRefs hook from cac#16 once it merges.
       const saves = await ctx.db
         .query("saves")
         .withIndex("by_event", (q) => q.eq("eventId", event._id))

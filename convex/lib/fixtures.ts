@@ -2,7 +2,7 @@ import { toZonedIso, zonedToUtc } from "./time";
 
 export const SCOUT_TEST_EVENT_PATH = "/fixtures/scout-test-event";
 export const SCOUT_TEST_EVENT_ID = "cac-scout-test-event";
-export const SCOUT_TEST_EVENT_TITLE = "[TEST] Scout fixture pitch night";
+export const SCOUT_TEST_EVENT_TITLE = "[TEST] Scout fixture hack night";
 
 const TIMEZONE = "America/Los_Angeles";
 const DAY = 86_400_000;
@@ -25,7 +25,7 @@ export function scoutTestEventTimes(now: number): { start: number; end: number }
 export function scoutTestEventHtml(canonicalUrl: string, now: number): string {
   const { start, end } = scoutTestEventTimes(now);
   const description =
-    "Synthetic test data for CAC end-to-end tests, not a real event. Student founders pitch to investors and a judging panel.";
+    "Synthetic test data for CAC end-to-end tests, not a real event. Students build side projects together at an evening hack night.";
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Event",
