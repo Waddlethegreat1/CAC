@@ -103,8 +103,11 @@ export default defineSchema({
     ...eventFields,
     rawListingId: v.optional(v.id("raw_listings")),
     lastSeenAt: v.number(),
+    school: v.optional(v.string()),
+    studentDensity: v.optional(v.number()),
   })
     .index("by_start", ["startTime"])
+    .index("by_school_start", ["school", "startTime"])
     .index("by_source_sourceId", ["source", "sourceId"])
     .searchIndex("search_title", {
       searchField: "title",
