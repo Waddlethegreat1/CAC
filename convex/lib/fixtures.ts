@@ -3,6 +3,8 @@ import { toZonedIso, zonedToUtc } from "./time";
 export const SCOUT_TEST_EVENT_PATH = "/fixtures/scout-test-event";
 export const SCOUT_TEST_EVENT_ID = "cac-scout-test-event";
 export const SCOUT_TEST_EVENT_TITLE = "[TEST] Scout fixture hack night";
+export const PAST_TEST_EVENT_ID = "cac-scout-test-past-event";
+export const PAST_TEST_EVENT_TITLE = "[TEST] Scout fixture past hack night";
 
 const TIMEZONE = "America/Los_Angeles";
 const DAY = 86_400_000;

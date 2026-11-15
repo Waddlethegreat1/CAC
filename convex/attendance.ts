@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internalQuery, mutation, query } from "./_generated/server";
-import { ended, eventDoc, investors, MAX_COMMITMENTS, recordFor, recordsFor, saveResponse, userFor } from "./attendanceModel";
+import { ended, eventDoc, investors, MAX_COMMITMENTS, recordFor, recordsFor, saveResponse, userFor, writeGoing } from "./attendanceModel";
 
 export const mine = query({
   args: { deviceId: v.string() },
@@ -26,12 +26,7 @@ export const setGoing = mutation({
     const user = await userFor(ctx, deviceId);
     if (!user) throw new Error("Finish onboarding before committing to events");
     if (!await ctx.db.get(eventId)) throw new Error("Event not found");
-    const existing = await recordFor(ctx, user._id, eventId);
-    if (existing) await ctx.db.patch(existing._id, { going });
-    else if (going) {
-      if ((await recordsFor(ctx, user._id)).length >= MAX_COMMITMENTS) throw new Error("Attendance limit exceeded");
-      await ctx.db.insert("attendance", { userId: user._id, eventId, going });
-    }
+    await writeGoing(ctx, user._id, eventId, going);
     return null;
   },
 });

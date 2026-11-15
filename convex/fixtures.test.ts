@@ -2,7 +2,7 @@ import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import { parseEventPage } from "./adapters/jsonld";
-import { SCOUT_TEST_EVENT_ID, SCOUT_TEST_EVENT_PATH, SCOUT_TEST_EVENT_TITLE, scoutTestEventTimes } from "./lib/fixtures";
+import { PAST_TEST_EVENT_ID, PAST_TEST_EVENT_TITLE, SCOUT_TEST_EVENT_ID, SCOUT_TEST_EVENT_PATH, SCOUT_TEST_EVENT_TITLE, scoutTestEventTimes } from "./lib/fixtures";
 import { INVESTORS_LIKELY_MIN } from "./lib/ranking";
 import { normalize } from "./normalize";
 import schema from "./schema";
@@ -143,5 +143,86 @@ describe("fixtures.purgeSynthetic", () => {
     expect(listings).toEqual([]);
     expect(submissions).toMatchObject([{ url: "https://example.com/real", eventIds: [realId] }]);
     expect(saves).toMatchObject([{ eventId: realId }]);
+  });
+});
+
+describe("fixtures.seedPastCommitment", () => {
+  const deviceId = "fresh-install-device";
+
+  test("refuses to run unless ENABLE_TEST_FIXTURES is 1", async () => {
+    const t = convexTest(schema, modules);
+    for (const value of [undefined, "0", "true"]) {
+      vi.stubEnv("ENABLE_TEST_FIXTURES", value);
+      await expect(t.mutation(api.fixtures.seedPastCommitment, { deviceId })).rejects.toThrow(/ENABLE_TEST_FIXTURES/);
+    }
+    const [events, users, attendance] = await t.run(async (ctx) => [
+      await ctx.db.query("events").collect(),
+      await ctx.db.query("users").collect(),
+      await ctx.db.query("attendance").collect(),
+    ]);
+    expect([events, users, attendance]).toEqual([[], [], []]);
+  });
+
+  test("creates a synthetic SF event that ended about 26 hours ago and shows it on the check-in card", async () => {
+    const t = convexTest(schema, modules);
+    const { eventId, commitmentId } = await t.mutation(api.fixtures.seedPastCommitment, { deviceId });
+    const event = (await t.run((ctx) => ctx.db.get(eventId)))!;
+    expect(event).toMatchObject({ sourceId: PAST_TEST_EVENT_ID, title: PAST_TEST_EVENT_TITLE, synthetic: true, city: "San Francisco" });
+    expect(Date.now() - event.endTime!).toBeGreaterThan(25 * 3_600_000);
+    expect(Date.now() - event.endTime!).toBeLessThan(27 * 3_600_000);
+    expect(await t.run((ctx) => ctx.db.get(commitmentId))).toMatchObject({ eventId, going: true });
+    expect(await t.query(api.users.get, { deviceId })).toMatchObject({ deviceId, city: "San Francisco" });
+
+    const pending = await t.query(api.attendance.pending, { deviceId, now: Date.now() });
+    expect(pending.map((e) => e._id)).toEqual([eventId]);
+    expect(await t.query(api.attendance.mine, { deviceId })).toEqual([{ eventId, going: true }]);
+  });
+
+  test("is idempotent and reuses an onboarded user", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await t.mutation(api.users.upsert, { ...sfStudent, deviceId });
+    const first = await t.mutation(api.fixtures.seedPastCommitment, { deviceId });
+    expect(await t.mutation(api.fixtures.seedPastCommitment, { deviceId })).toEqual(first);
+    const [events, users, attendance] = await t.run(async (ctx) => [
+      await ctx.db.query("events").collect(),
+      await ctx.db.query("users").collect(),
+      await ctx.db.query("attendance").collect(),
+    ]);
+    expect(events).toHaveLength(1);
+    expect(users.map((u) => u._id)).toEqual([userId]);
+    expect(attendance).toMatchObject([{ _id: first.commitmentId, userId, eventId: first.eventId, going: true }]);
+
+    const other = await t.mutation(api.fixtures.seedPastCommitment, { deviceId: "second-device" });
+    expect(other.eventId).toBe(first.eventId);
+    expect(other.commitmentId).not.toBe(first.commitmentId);
+  });
+
+  test("keeps the event out of feed.ranked, investor.ranked, and QA", async () => {
+    const t = convexTest(schema, modules);
+    await t.mutation(api.users.upsert, { ...sfStudent, deviceId });
+    const { eventId } = await t.mutation(api.fixtures.seedPastCommitment, { deviceId });
+    const feed = await t.query(api.feed.ranked, { deviceId });
+    expect(feed?.events.map((e) => e._id)).not.toContain(eventId);
+    const investor = await t.query(api.investor.ranked, { deviceId });
+    expect(investor.events.map((e) => e._id)).not.toContain(eventId);
+    const qa = await t.query(internal.qa.report, {});
+    expect(qa.totals.events).toBe(0);
+  });
+
+  test("purgeSynthetic removes the event and leaves no orphaned attendance rows", async () => {
+    const t = convexTest(schema, modules);
+    const { eventId } = await t.mutation(api.fixtures.seedPastCommitment, { deviceId });
+    await t.mutation(api.fixtures.seedPastCommitment, { deviceId: "second-device" });
+    await t.mutation(api.attendance.respond, { deviceId, eventId, attended: true, rating: 4, investors: "yes" });
+    expect(await t.run((ctx) => ctx.db.query("attendance_totals").collect())).toHaveLength(1);
+
+    expect(await t.mutation(internal.fixtures.purgeSynthetic, {})).toMatchObject({ events: 1, more: false });
+    const [events, attendance, totals] = await t.run(async (ctx) => [
+      await ctx.db.query("events").collect(),
+      await ctx.db.query("attendance").collect(),
+      await ctx.db.query("attendance_totals").collect(),
+    ]);
+    expect([events, attendance, totals]).toEqual([[], [], []]);
+    expect(await t.query(api.attendance.pending, { deviceId, now: Date.now() })).toEqual([]);
   });
 });
