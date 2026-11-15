@@ -49,15 +49,21 @@ export const logFetch = internalMutation({
     feedId: v.id("feeds"),
     startedAt: v.number(),
     status: v.union(v.literal("ok"), v.literal("error")),
-    fetched: v.number(),
-    kept: v.number(),
+    rawCount: v.number(),
+    insertedCount: v.number(),
     error: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const finishedAt = Date.now();
-    await ctx.db.insert("fetch_log", { ...args, finishedAt });
-    await ctx.db.patch(args.feedId, { lastFetchedAt: finishedAt, lastStatus: args.status });
+    await ctx.db.insert("fetch_log", { ...args, finishedAt, durationMs: finishedAt - args.startedAt });
+    const feed = await ctx.db.get(args.feedId);
+    if (!feed) return null;
+    await ctx.db.patch(args.feedId, {
+      lastFetchedAt: finishedAt,
+      nextFetchAt: finishedAt + feed.intervalMinutes * 60_000,
+      lastStatus: args.status,
+    });
     return null;
   },
 });
@@ -78,11 +84,11 @@ export const runFeed = internalAction({
         await ctx.runMutation(internal.ingest.store, { feedId, items: items.slice(i, i + BATCH) });
       }
       const kept = items.filter((i) => i.event).length;
-      await ctx.runMutation(internal.ingest.logFetch, { feedId, startedAt, status: "ok", fetched: raws.length, kept });
+      await ctx.runMutation(internal.ingest.logFetch, { feedId, startedAt, status: "ok", rawCount: raws.length, insertedCount: kept });
       return { fetched: raws.length, kept };
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
-      await ctx.runMutation(internal.ingest.logFetch, { feedId, startedAt, status: "error", fetched: 0, kept: 0, error });
+      await ctx.runMutation(internal.ingest.logFetch, { feedId, startedAt, status: "error", rawCount: 0, insertedCount: 0, error });
       throw err;
     }
   },

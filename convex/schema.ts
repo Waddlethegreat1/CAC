@@ -59,21 +59,37 @@ export default defineSchema({
     url: v.string(),
     enabled: v.boolean(),
     intervalMinutes: v.number(),
+    tier: v.optional(v.string()),
     lastFetchedAt: v.optional(v.number()),
+    nextFetchAt: v.optional(v.number()),
     lastStatus: v.optional(v.union(v.literal("ok"), v.literal("error"))),
   })
     .index("by_url", ["url"])
-    .index("by_source", ["source"]),
+    .index("by_source", ["source"])
+    .index("by_enabled_nextFetchAt", ["enabled", "nextFetchAt"]),
 
   fetch_log: defineTable({
     feedId: v.id("feeds"),
     startedAt: v.number(),
     finishedAt: v.number(),
-    status: v.union(v.literal("ok"), v.literal("error")),
-    fetched: v.number(),
-    kept: v.number(),
+    durationMs: v.number(),
+    status: v.union(v.literal("ok"), v.literal("error"), v.literal("skipped_robots")),
+    rawCount: v.number(),
+    insertedCount: v.number(),
     error: v.optional(v.string()),
   }).index("by_feed", ["feedId", "startedAt"]),
+
+  robots_cache: defineTable({
+    domain: v.string(),
+    body: v.string(),
+    fetchedAt: v.number(),
+    expiresAt: v.number(),
+  }).index("by_domain", ["domain"]),
+
+  domain_rate: defineTable({
+    domain: v.string(),
+    nextAllowedAt: v.number(),
+  }).index("by_domain", ["domain"]),
 
   raw_listings: defineTable({
     feedId: v.optional(v.id("feeds")),
