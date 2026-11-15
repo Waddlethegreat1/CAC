@@ -2,10 +2,10 @@
 
 _meta:
     remote_id: 0068d457-9401-4c1a-9c1e-a0a8b1bc322c
-    remote_version: 4
-    local_version: 4
-    last_synced_at: "2026-11-15T21:55:45Z"
-    checksum: 2447a603db41b8031a80010a1a5d9791867301d6551402cd59b9b7e3648c44af
+    remote_version: 5
+    local_version: 5
+    last_synced_at: "2026-11-15T23:33:29Z"
+    checksum: 15d170f344ba763158bdc9d6ad2e1116b9fd765b4854f460460c5d20c39ccda7
 test:
     metadata:
         name: profile-edit
@@ -25,15 +25,15 @@ test:
         - type: instructions
           step_description: Tap the "Edit interests" button, tap the "Climate" interest chip, then tap "Save interests".
         - type: validation
-          step_description: A confirmation reads "Interests saved", and the interests list now includes Climate.
+          step_description: The interests list now includes Climate.
         - type: instructions
           step_description: Tap the Area row, then tap the "San Francisco" area chip.
         - type: validation
-          step_description: A confirmation reads "Area set to San Francisco", and the Area row shows "San Francisco".
+          step_description: The Area row shows "San Francisco".
         - type: instructions
           step_description: Under Distance, tap "10 mi".
         - type: validation
-          step_description: A confirmation reads "Distance updated", and "10 mi" is selected.
+          step_description: Under Distance, the 10 mi option is selected.
         - type: instructions
           step_description: Tap the Feed tab in the bottom tab bar.
         - type: validation

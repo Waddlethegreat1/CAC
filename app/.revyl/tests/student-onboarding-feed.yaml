@@ -2,10 +2,10 @@
 
 _meta:
     remote_id: 748bad05-48fe-4c57-bbc7-d8c61b74c2aa
-    remote_version: 4
-    local_version: 4
-    last_synced_at: "2026-11-15T21:55:33Z"
-    checksum: 0889651cf627d8c1678b694542479bc3b83e90c27cb5ced3d6727af5a492c3bd
+    remote_version: 5
+    local_version: 5
+    last_synced_at: "2026-11-15T23:33:29Z"
+    checksum: 2d15a593760804b748da9aa841d0ec6323e4e3b92accc784b4d6cd376ffc51de
 test:
     metadata:
         name: student-onboarding-feed
@@ -52,4 +52,8 @@ test:
         - type: instructions
           step_description: Tap the Profile tab.
         - type: validation
-          step_description: The Profile screen shows "Talent" selected, a details card with the name "Scout E2E" and email "{{email}}", and an account section with a "Sign out" button.
+          step_description: The Profile screen shows "Talent" selected and a details card with the name "Scout E2E" and the email "{{email}}".
+        - type: instructions
+          step_description: Scroll down to the bottom of the Profile screen.
+        - type: validation
+          step_description: An account section shows a "Sign out" button.
