@@ -6,6 +6,7 @@ build:
     framework: expo
     env:
         EXPO_PUBLIC_CONVEX_URL: https://nautical-sheep-358.convex.cloud
+        EXPO_PUBLIC_TEST_FIXTURES: "1"
     profiles:
         development:
             ios:

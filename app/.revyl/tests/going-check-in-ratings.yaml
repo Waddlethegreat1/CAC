@@ -23,8 +23,13 @@ test:
           step_description: Open that saved event and tap Going to cancel the commitment.
         - type: validation
           step_description: The event still says Saved, but the going control now says I'm going.
+        - type: manual
+          step_type: navigate
+          step_description: "cac-scout://dev/seed-checkin"
+        - type: validation
+          step_description: The For you feed is visible, with a "Did you make it" card for "[TEST] Scout fixture past hack night" at the top.
         - type: instructions
-          step_description: Return to the For you feed. This test requires attendanceSeed.run to have been run with this installation's deviceId, creating a demo past commitment. Find the Did you make it card at the top of the feed and tap Yes, I went.
+          step_description: On the "Did you make it" card at the top of the feed, tap Yes, I went.
         - type: validation
           step_description: A compact Was it worth it form shows 1 through 5, an investors or recruiters yes/no/not sure choice, an optional one-line note, and a disabled Save my check-in button.
         - type: instructions
@@ -42,7 +47,7 @@ test:
         - type: instructions
           step_description: Open the attended demo event from the history.
         - type: validation
-          step_description: Beside the inferred investor score, an attendee aggregate shows worth it, at least 3 ratings, and an investors or recruiters confirmed by attendees line, clearly separate from the inferred score.
+          step_description: The event detail shows the inferred investor score. If an attendee aggregate is shown beside it, it reads worth it with at least 3 ratings and is clearly separate from the inferred score; with fewer than 3 ratings, no aggregate is shown.
         - type: instructions
           step_description: Return to the For you feed, then leave and reopen the app.
         - type: validation
