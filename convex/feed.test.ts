@@ -1,6 +1,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { api } from "./_generated/api";
+import { INVESTORS_LIKELY_MIN } from "./lib/ranking";
 import schema from "./schema";
 
 const modules = import.meta.glob(["./**/*.ts", "./**/*.js", "!./**/*.test.ts", "!./**/*.d.ts"]);
@@ -15,7 +16,10 @@ const user = {
   locationSource: "city" as const,
 };
 
-const event = (sourceId: string, place: { lat?: number; lng?: number; isOnline?: boolean; venue?: string }) => ({
+const event = (
+  sourceId: string,
+  place: { lat?: number; lng?: number; isOnline?: boolean; venue?: string; investorScore?: number },
+) => ({
   title: `Event ${sourceId}`,
   description: "",
   startTime: Date.now() + 2 * 86_400_000,
@@ -80,5 +84,16 @@ describe("feed radius and card fields", () => {
     expect((await t.query(api.users.get, { deviceId: user.deviceId }))!.radiusKm).toBe(10);
     await t.mutation(api.users.upsert, { ...user, radiusKm: 25 });
     expect((await t.query(api.users.get, { deviceId: user.deviceId }))!.radiusKm).toBe(25);
+  });
+
+  test("the investors filter starts at INVESTORS_LIKELY_MIN", async () => {
+    expect(INVESTORS_LIKELY_MIN).toBe(70);
+    const t = convexTest(schema, modules);
+    await t.mutation(api.users.upsert, user);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("events", event("below", { isOnline: true, investorScore: INVESTORS_LIKELY_MIN - 1 }));
+      await ctx.db.insert("events", event("at", { isOnline: true, investorScore: INVESTORS_LIKELY_MIN }));
+    });
+    expect(ids(await t.query(api.feed.ranked, { deviceId: user.deviceId, filter: "investors" }))).toEqual(["at"]);
   });
 });

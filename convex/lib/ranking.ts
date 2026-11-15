@@ -16,6 +16,8 @@ export type Ranked = {
   matched: string[];
 };
 
+export const INVESTORS_LIKELY_MIN = 70;
+
 const DAY = 86_400_000;
 
 export function scoreEvent(event: Doc<"events">, input: RankInput): Ranked {

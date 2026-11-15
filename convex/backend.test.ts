@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { api, internal } from "./_generated/api";
 import type { RawEvent } from "./lib/rawEvent";
+import { INVESTORS_LIKELY_MIN } from "./lib/ranking";
 import { normalize } from "./normalize";
 import schema from "./schema";
 
@@ -45,7 +46,7 @@ describe("backend", () => {
     expect(feed?.events[0].matched.length).toBeGreaterThan(0);
 
     const investorOnly = await t.query(api.feed.ranked, { deviceId: student.deviceId, filter: "investors" });
-    expect(investorOnly?.events.every((e) => e.investorScore >= 60)).toBe(true);
+    expect(investorOnly?.events.every((e) => e.investorScore >= INVESTORS_LIKELY_MIN)).toBe(true);
   });
 
   test("store upserts by source and sourceId", async () => {

@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
-import { rankEvents } from "./lib/ranking";
+import { INVESTORS_LIKELY_MIN, rankEvents } from "./lib/ranking";
 
 const DAY = 86_400_000;
 export const DEFAULT_DURATION = 3 * 3600_000;
@@ -31,7 +31,7 @@ export const ranked = query({
     const filtered = live.filter((e) => {
       switch (filter) {
         case "investors":
-          return e.investorScore >= 60;
+          return e.investorScore >= INVESTORS_LIKELY_MIN;
         case "hackathons":
           return e.eventType === "hackathon";
         case "pitch":
