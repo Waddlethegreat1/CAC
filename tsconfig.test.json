@@ -11,5 +11,5 @@
     "isolatedModules": true,
     "types": ["node", "vite/client"]
   },
-  "include": ["convex/**/*.test.ts", "vitest.config.mts"]
+  "include": ["convex/**/*.test.ts", "app/src/**/*.test.ts", "vitest.config.mts"]
 }
