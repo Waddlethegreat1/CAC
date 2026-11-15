@@ -1,0 +1,49 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: 11a20e59-fd8b-42b7-ae37-98753d03f797
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-15T18:05:59Z"
+    checksum: 0de1aa2a113679cddc8e38b36e5f587b90802f5c6190161e480b4a84ed4a97dd
+test:
+    metadata:
+        name: smoke-onboarding-feed
+        platform: ios
+        tags:
+            - smoke
+    build:
+        name: Scout iOS
+    blocks:
+        - type: validation
+          step_description: The onboarding screen says "Welcome to Scout" and shows a Student option and an Investor option.
+        - type: instructions
+          step_description: Tap the Student option.
+        - type: instructions
+          step_description: Tap the Continue button at the bottom of the screen.
+        - type: validation
+          step_description: A screen titled "What are you into?" shows interest chips, and Hackathons and Pitch competitions are already selected.
+        - type: instructions
+          step_description: Tap the "AI & ML" interest chip.
+        - type: instructions
+          step_description: Tap the Continue button.
+        - type: validation
+          step_description: A screen titled "Where are you?" shows a "Use my current location" button and a list of cities.
+        - type: instructions
+          step_description: Tap the "Palo Alto" city chip.
+        - type: instructions
+          step_description: Tap the "Show my events" button.
+        - type: validation
+          step_description: The feed shows "Events near" with "Palo Alto" as the heading and a list of at least three event cards, each with a date and a title.
+        - type: instructions
+          step_description: Tap the first event card in the list.
+        - type: validation
+          step_description: An event detail screen shows the event title, a date line, an investor signal section with a score out of 100, and an "Open event page" button.
+        - type: instructions
+          step_description: Tap the Save button at the bottom of the screen.
+        - type: validation
+          step_description: The Save button now reads "Saved".
+        - type: instructions
+          step_description: Tap the "Open event page" button.
+        - type: validation
+          step_description: A web page for the event opens in an in-app browser.
