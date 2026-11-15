@@ -5,6 +5,11 @@ import schema from "./schema";
 
 const modules = import.meta.glob(["./**/*.ts", "./**/*.js", "!./**/*.test.ts", "!./**/*.d.ts"]);
 const NOW = Date.UTC(2026, 10, 15, 12);
+const DAY = 86_400_000;
+const beforeEnd = async <T>(fn: () => Promise<T>) => {
+  vi.setSystemTime(NOW - 2 * DAY);
+  try { return await fn(); } finally { vi.setSystemTime(NOW); }
+};
 const userArgs = (deviceId: string) => ({
   deviceId, role: "student" as const, interests: ["ai"], city: "San Francisco",
   lat: 37.77, lng: -122.42, locationSource: "city" as const,
@@ -18,10 +23,12 @@ const eventArgs = (sourceId: string, startTime = NOW - 86_400_000, endTime?: num
 });
 
 async function setup() {
+  vi.setSystemTime(NOW - 3 * DAY);
   const t = convexTest(schema, modules);
   const alice = await t.mutation(api.users.upsert, userArgs("alice"));
   const bob = await t.mutation(api.users.upsert, userArgs("bob"));
   const eventId = await t.run((ctx) => ctx.db.insert("events", eventArgs("past")));
+  vi.setSystemTime(NOW);
   return { t, alice, bob, eventId, args: { deviceId: "alice", eventId } };
 }
 
@@ -34,7 +41,7 @@ describe("attendance", () => {
     expect(await t.query(api.attendance.mine, { deviceId: "unknown" })).toEqual([]);
     expect(await t.query(api.attendance.pending, { deviceId: "unknown", now: NOW })).toEqual([]);
     expect(await t.query(api.attendance.history, { deviceId: "unknown" })).toEqual([]);
-    for (let i = 0; i < 2; i++) await t.mutation(api.attendance.setGoing, { ...args, going: true });
+    await beforeEnd(async () => { for (let i = 0; i < 2; i++) await t.mutation(api.attendance.setGoing, { ...args, going: true }); });
     expect(await t.query(api.attendance.mine, { deviceId: "alice" })).toEqual([{ eventId, going: true }]);
     expect(await t.query(api.attendance.mine, { deviceId: "bob" })).toEqual([]);
     expect(await t.query(api.saves.isSaved, args)).toBe(false);
@@ -46,12 +53,34 @@ describe("attendance", () => {
     expect(await t.run((ctx) => ctx.db.query("attendance").collect())).toHaveLength(1);
   });
 
+  test("going cannot be set once an event has ended, but an existing commitment can still be withdrawn", async () => {
+    const { t, args, eventId } = await setup();
+    const activeId = await t.run((ctx) => ctx.db.insert("events", eventArgs("active-now", NOW - 3_600_000, NOW + 3_600_000)));
+    const ended = (promise: Promise<unknown>) => promise.then(() => "ok", (e: { data?: { code?: string } }) => e.data?.code ?? String(e));
+    expect(await ended(t.mutation(api.attendance.setGoing, { ...args, going: true }))).toBe("event_ended");
+    await expect(t.mutation(api.attendance.setGoing, { ...args, going: true })).rejects.toThrow("already ended");
+    expect(await t.run((ctx) => ctx.db.query("attendance").collect())).toEqual([]);
+    await t.mutation(api.attendance.setGoing, { ...args, eventId: activeId, going: true });
+    vi.setSystemTime(NOW + 2 * 3_600_000);
+    expect(await ended(t.mutation(api.attendance.setGoing, { ...args, eventId: activeId, going: true }))).toBe("event_ended");
+    expect(await t.query(api.attendance.mine, { deviceId: "alice" })).toEqual([{ eventId: activeId, going: true }]);
+    await t.mutation(api.attendance.setGoing, { ...args, eventId: activeId, going: false });
+    expect(await ended(t.mutation(api.attendance.setGoing, { ...args, eventId: activeId, going: true }))).toBe("event_ended");
+    expect(await t.query(api.attendance.mine, { deviceId: "alice" })).toEqual([{ eventId: activeId, going: false }]);
+    expect(eventId).toBeDefined();
+  });
+
   test("pending uses end time or a three-hour fallback, excludes active events, and cannot be advanced by clients", async () => {
     const { t, args, eventId } = await setup();
-    const futureId = await t.run((ctx) => ctx.db.insert("events", eventArgs("future", NOW + 86_400_000)));
-    const activeId = await t.run((ctx) => ctx.db.insert("events", eventArgs("active", NOW - 86_400_000, NOW + 3_600_000)));
-    const fallbackId = await t.run((ctx) => ctx.db.insert("events", eventArgs("fallback", NOW - 3 * 3_600_000)));
-    for (const id of [eventId, futureId, activeId, fallbackId]) await t.mutation(api.attendance.setGoing, { ...args, eventId: id, going: true });
+    const [futureId, activeId, fallbackId] = await beforeEnd(async () => {
+      const ids = [
+        await t.run((ctx) => ctx.db.insert("events", eventArgs("future", NOW + 86_400_000))),
+        await t.run((ctx) => ctx.db.insert("events", eventArgs("active", NOW - 86_400_000, NOW + 3_600_000))),
+        await t.run((ctx) => ctx.db.insert("events", eventArgs("fallback", NOW - 3 * 3_600_000))),
+      ];
+      for (const id of [eventId, ...ids]) await t.mutation(api.attendance.setGoing, { ...args, eventId: id, going: true });
+      return ids;
+    });
     expect((await t.query(api.attendance.pending, { deviceId: "alice", now: NOW })).map((e) => e._id)).toEqual([eventId, fallbackId]);
     expect((await t.query(api.attendance.pending, { deviceId: "alice", now: NOW + 999_999_999 })).map((e) => e._id)).toEqual([eventId, fallbackId]);
     expect(await t.query(api.attendance.pending, { deviceId: "alice", now: NOW - 999_999_999 })).toEqual([]);
@@ -70,7 +99,11 @@ describe("attendance", () => {
     vi.setSystemTime(NOW + 10_000);
     await t.mutation(api.attendance.dismiss, args);
     await t.mutation(api.attendance.setGoing, { ...args, going: false });
-    await t.mutation(api.attendance.setGoing, { ...args, going: true });
+    await expect(t.mutation(api.attendance.setGoing, { ...args, going: true })).rejects.toThrow("already ended");
+    await t.run(async (ctx) => {
+      const record = (await ctx.db.query("attendance").collect()).find((r) => r.eventId === args.eventId && r.dismissedAt !== undefined)!;
+      await ctx.db.patch(record._id, { going: true });
+    });
     await t.mutation(internal.attendanceSeed.run, { deviceId: "alice" });
     expect(await t.query(api.attendance.pending, { deviceId: "alice", now: NOW + 10_000 })).toEqual([]);
     expect(await t.run((ctx) => ctx.db.query("attendance").collect())).toEqual(snapshot);
@@ -81,7 +114,7 @@ describe("attendance", () => {
     await expect(t.mutation(api.attendance.setGoing, { ...args, deviceId: "unknown", going: true })).rejects.toThrow("onboarding");
     await expect(t.mutation(api.attendance.respond, { ...args, attended: false })).rejects.toThrow("ended commitment");
     await expect(t.mutation(api.attendance.dismiss, args)).rejects.toThrow("ended commitment");
-    await t.mutation(api.attendance.setGoing, { ...args, going: true });
+    await beforeEnd(() => t.mutation(api.attendance.setGoing, { ...args, going: true }));
     await expect(t.mutation(api.attendance.respond, { ...args, deviceId: "bob", attended: false })).rejects.toThrow("ended commitment");
     await expect(t.mutation(api.attendance.dismiss, { ...args, deviceId: "bob" })).rejects.toThrow("ended commitment");
     await expect(t.mutation(api.attendance.respond, { ...args, deviceId: "unknown", attended: false })).rejects.toThrow("onboarding");
@@ -94,7 +127,7 @@ describe("attendance", () => {
 
   test("validates ratings, conditional requirements, enum, and one-line notes", async () => {
     const { t, args } = await setup();
-    await t.mutation(api.attendance.setGoing, { ...args, going: true });
+    await beforeEnd(() => t.mutation(api.attendance.setGoing, { ...args, going: true }));
     const response = { ...args, attended: true, rating: 4, investors: "yes" as const };
     for (const rating of [0, 6, 1.5, NaN, Infinity, -Infinity]) await expect(t.mutation(api.attendance.respond, { ...response, rating })).rejects.toThrow("integer from 1 to 5");
     await expect(t.mutation(api.attendance.respond, { ...args, attended: true, rating: 4 })).rejects.toThrow("requires");
@@ -110,10 +143,14 @@ describe("attendance", () => {
 
   test("no-shows answer the prompt permanently and stay out of history and aggregates", async () => {
     const { t, args } = await setup();
-    await t.mutation(api.attendance.setGoing, { ...args, going: true });
+    await beforeEnd(() => t.mutation(api.attendance.setGoing, { ...args, going: true }));
     await t.mutation(api.attendance.respond, { ...args, attended: false, note: "Couldn't make it" });
     await t.mutation(api.attendance.setGoing, { ...args, going: false });
-    await t.mutation(api.attendance.setGoing, { ...args, going: true });
+    await expect(t.mutation(api.attendance.setGoing, { ...args, going: true })).rejects.toThrow("already ended");
+    await t.run(async (ctx) => {
+      const record = (await ctx.db.query("attendance").collect())[0];
+      await ctx.db.patch(record._id, { going: true });
+    });
     expect(await t.query(api.attendance.pending, { deviceId: "alice", now: NOW })).toEqual([]);
     expect(await t.query(api.attendance.history, { deviceId: "alice" })).toEqual([]);
     expect(await t.query(api.attendance.aggregate, { eventId: args.eventId })).toBeNull();
@@ -123,9 +160,13 @@ describe("attendance", () => {
   test("aggregate hides fewer than three ratings and exposes only exact counts and average, including edits/retries", async () => {
     const { t, args, eventId } = await setup();
     expect(await t.query(api.attendance.aggregate, { eventId })).toBeNull();
+    await beforeEnd(async () => {
+      for (const deviceId of ["alice", "bob", "charlie"]) {
+        await t.mutation(api.users.upsert, userArgs(deviceId));
+        await t.mutation(api.attendance.setGoing, { deviceId, eventId, going: true });
+      }
+    });
     for (const [i, deviceId] of ["alice", "bob", "charlie"].entries()) {
-      await t.mutation(api.users.upsert, userArgs(deviceId));
-      await t.mutation(api.attendance.setGoing, { deviceId, eventId, going: true });
       const response = { deviceId, eventId, attended: true, rating: i + 3, investors: i === 0 ? "yes" as const : "unsure" as const, note: "private" };
       await t.mutation(api.attendance.respond, response);
       await t.mutation(api.attendance.respond, response);
@@ -140,9 +181,12 @@ describe("attendance", () => {
 
   test("history returns attended events newest first, null notes, and survives un-going; deleted events are omitted", async () => {
     const { t, args, eventId } = await setup();
-    const newer = await t.run((ctx) => ctx.db.insert("events", eventArgs("newer", NOW - 4 * 3_600_000)));
+    const newer = await beforeEnd(async () => {
+      const id = await t.run((ctx) => ctx.db.insert("events", eventArgs("newer", NOW - 4 * 3_600_000)));
+      for (const eventToCommit of [eventId, id]) await t.mutation(api.attendance.setGoing, { ...args, eventId: eventToCommit, going: true });
+      return id;
+    });
     for (const id of [eventId, newer]) {
-      await t.mutation(api.attendance.setGoing, { ...args, eventId: id, going: true });
       await t.mutation(api.attendance.respond, { ...args, eventId: id, attended: true, rating: 4, investors: "no" });
     }
     await t.mutation(api.attendance.setGoing, { ...args, going: false });
