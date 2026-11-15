@@ -138,6 +138,11 @@ export default defineSchema({
     locationSource: v.union(v.literal("device"), v.literal("city")),
     radiusKm: v.optional(v.number()),
     updatedAt: v.number(),
+    name: v.optional(v.string()),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    affiliation: v.optional(v.string()),
+    linkedin: v.optional(v.string()),
   }).index("by_device", ["deviceId"]),
 
   interests: defineTable({

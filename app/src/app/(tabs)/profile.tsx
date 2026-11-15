@@ -6,12 +6,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "@/components/button";
 import { AttendanceHistory } from "@/components/attendance";
+import { DetailsFields, affiliationLabel, contactOf } from "@/components/details-fields";
 import { Icon } from "@/components/icon";
 import { Segmented } from "@/components/segmented";
 import { SelectChip } from "@/components/select-chip";
 import { colors, layout, radius, shadow, space, type } from "@/constants/theme";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
+import { checkContact, type Contact } from "@/convex/lib/contact";
 import { DEFAULT_RADIUS_KM, RADIUS_OPTIONS, useDeviceId } from "@/lib/device";
 import { AREAS, cityPlace, locateDevice, type Place, type Role } from "@/lib/profile";
 
@@ -45,6 +47,9 @@ function ProfileForm({ user }: { user: User }) {
   const upsert = useMutation(api.users.upsert);
   const [editingInterests, setEditingInterests] = useState(false);
   const [draft, setDraft] = useState<string[]>(user.interests);
+  const [editingDetails, setEditingDetails] = useState(false);
+  const [details, setDetails] = useState<Contact>(contactOf(user));
+  const [detailErrors, setDetailErrors] = useState<Partial<Contact>>({});
   const [areaOpen, setAreaOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +66,7 @@ function ProfileForm({ user }: { user: User }) {
     noticeTimer.current = setTimeout(() => setNotice(null), 2500);
   };
 
-  const save = async (patch: Partial<{ role: Role; interests: string[]; radiusKm: number } & Place>, done: string) => {
+  const save = async (patch: Partial<{ role: Role; interests: string[]; radiusKm: number } & Place & Contact>, done: string) => {
     setError(null);
     try {
       await upsert({
@@ -89,6 +94,23 @@ function ProfileForm({ user }: { user: User }) {
     if (await save({ interests: draft }, "Interests saved")) setEditingInterests(false);
   };
 
+  const saveDetails = async () => {
+    const checked = checkContact(details);
+    if ("errors" in checked) {
+      setDetailErrors(checked.errors);
+      return setError("Check the highlighted details");
+    }
+    if (await save(checked.values, "Details saved")) setEditingDetails(false);
+  };
+
+  const detailRows = [
+    { label: "Name", value: user.name },
+    { label: "Email", value: user.email },
+    { label: "Phone", value: user.phone },
+    { label: affiliationLabel(user.role), value: user.affiliation },
+    { label: "LinkedIn", value: user.linkedin?.replace(/^https:\/\/www\./, "") },
+  ];
+
   const useMyLocation = async () => {
     setLocating(true);
     const result = await locateDevice();
@@ -108,14 +130,71 @@ function ProfileForm({ user }: { user: User }) {
       <Segmented
         accessibilityLabel="Role"
         options={[
-          { value: "student" as Role, label: "Student", testID: "profile-role-student" },
-          { value: "investor" as Role, label: "Investor", testID: "profile-role-investor" },
+          { value: "student" as Role, label: "Talent", testID: "profile-role-student" },
+          { value: "investor" as Role, label: "Looking for Talent", testID: "profile-role-investor" },
         ]}
         value={user.role}
         onChange={(role) => {
-          if (role !== user.role) void save({ role }, role === "investor" ? "Investor mode on. Your feed now scouts student events" : "Student mode on");
+          if (role !== user.role)
+            void save({ role }, role === "investor" ? "Looking for Talent on. Your feed now scouts student events" : "Talent mode on");
         }}
       />
+
+      <Text style={styles.group}>Your details</Text>
+      {editingDetails ? (
+        <>
+          <DetailsFields
+            role={user.role}
+            value={details}
+            errors={detailErrors}
+            testIDPrefix="profile-details"
+            onChange={(field, text) => {
+              setError(null);
+              setDetails((cur) => ({ ...cur, [field]: text }));
+              setDetailErrors((cur) => ({ ...cur, [field]: undefined }));
+            }}
+          />
+          <View style={styles.row}>
+            <Button
+              variant="ghost"
+              label="Cancel"
+              style={{ flex: 1 }}
+              onPress={() => {
+                setDetails(contactOf(user));
+                setDetailErrors({});
+                setEditingDetails(false);
+                setError(null);
+              }}
+            />
+            <Button testID="save-details" label="Save details" style={{ flex: 2 }} onPress={saveDetails} />
+          </View>
+        </>
+      ) : (
+        <>
+          <View style={styles.card} testID="profile-details">
+            {detailRows.map((r, i) => (
+              <View key={r.label} style={[styles.prow, i > 0 && styles.divider]}>
+                <Text style={styles.body}>{r.label}</Text>
+                <Text style={[styles.value, styles.detailValue, !r.value && styles.empty]} numberOfLines={1}>
+                  {r.value || "Not added"}
+                </Text>
+              </View>
+            ))}
+          </View>
+          <Text style={styles.privacy}>Only you can see your email, phone, and LinkedIn</Text>
+          <Button
+            testID="edit-details"
+            variant="outline"
+            label={user.name ? "Edit details" : "Add your details"}
+            style={{ marginTop: space.md }}
+            onPress={() => {
+              setDetails(contactOf(user));
+              setDetailErrors({});
+              setEditingDetails(true);
+            }}
+          />
+        </>
+      )}
 
       <Text style={styles.group}>Interests</Text>
       {editingInterests ? (
@@ -256,6 +335,9 @@ const styles = StyleSheet.create({
   areaPicker: { paddingHorizontal: layout.cardPadding, paddingBottom: layout.cardPadding, gap: space.md },
   body: { ...type.body, color: colors.ink, flex: 1 },
   value: { ...type.body, color: colors.muted, paddingVertical: space.md },
+  detailValue: { flexShrink: 1, maxWidth: "65%", textAlign: "right" },
+  empty: { color: colors.subtle },
+  privacy: { ...type.meta, color: colors.subtle, marginTop: space.sm },
   error: { ...type.meta, color: colors.danger, minHeight: 18, marginTop: space.md },
   notice: { flexDirection: "row", alignItems: "center", gap: space.sm, marginBottom: space.sm },
   noticeText: { ...type.meta, color: colors.ink },
