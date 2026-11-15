@@ -57,15 +57,15 @@ export const reserveSlot = internalMutation({
   },
 });
 
-export function makeHttp(ctx: ActionCtx): Http {
-  const throttledFetch = async (url: string, accept: string) => {
-    const domain = new URL(url).host;
-    const at = await ctx.runMutation(internal.lib.http.reserveSlot, { domain });
-    const wait = at - Date.now();
-    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-    return fetch(url, { headers: { "User-Agent": USER_AGENT, Accept: accept } });
-  };
+export async function throttledFetch(ctx: ActionCtx, url: string, accept: string) {
+  const domain = new URL(url).host;
+  const at = await ctx.runMutation(internal.lib.http.reserveSlot, { domain });
+  const wait = at - Date.now();
+  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+  return fetch(url, { headers: { "User-Agent": USER_AGENT, Accept: accept } });
+}
 
+export function makeHttp(ctx: ActionCtx): Http {
   const robotsFor = async (url: string) => {
     const { host, origin } = new URL(url);
     const cached = await ctx.runQuery(internal.lib.http.getRobots, { domain: host });
@@ -73,7 +73,7 @@ export function makeHttp(ctx: ActionCtx): Http {
     let body: string;
     let ttlMs = ROBOTS_TTL_MS;
     try {
-      const res = await throttledFetch(`${origin}/robots.txt`, "text/plain");
+      const res = await throttledFetch(ctx, `${origin}/robots.txt`, "text/plain");
       if (res.ok) body = await res.text();
       else if (res.status >= 400 && res.status < 500) body = "";
       else {
@@ -91,7 +91,7 @@ export function makeHttp(ctx: ActionCtx): Http {
   return {
     async text(url, accept = "*/*") {
       if (!isAllowed(await robotsFor(url), url)) throw new RobotsDisallowedError(url);
-      const res = await throttledFetch(url, accept);
+      const res = await throttledFetch(ctx, url, accept);
       if (!res.ok) throw new Error(`${url} responded ${res.status}`);
       return res.text();
     },

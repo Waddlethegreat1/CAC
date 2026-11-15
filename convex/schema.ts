@@ -52,6 +52,8 @@ export const eventFields = {
 
 export const normalizedEvent = v.object(eventFields);
 
+export const eventSource = v.object({ url: v.string(), source: v.string(), sourceId: v.string() });
+
 export default defineSchema({
   feeds: defineTable({
     source: v.string(),
@@ -105,14 +107,25 @@ export default defineSchema({
     lastSeenAt: v.number(),
     school: v.optional(v.string()),
     studentDensity: v.optional(v.number()),
+    dedupeKey: v.optional(v.string()),
+    sources: v.optional(v.array(eventSource)),
   })
     .index("by_start", ["startTime"])
+    .index("by_dedupeKey", ["dedupeKey"])
     .index("by_school_start", ["school", "startTime"])
     .index("by_source_sourceId", ["source", "sourceId"])
     .searchIndex("search_title", {
       searchField: "title",
       filterFields: ["city", "eventType", "source"],
     }),
+
+  geocode_cache: defineTable({
+    key: v.string(),
+    lat: v.optional(v.number()),
+    lng: v.optional(v.number()),
+    city: v.optional(v.string()),
+    fetchedAt: v.number(),
+  }).index("by_key", ["key"]),
 
   users: defineTable({
     deviceId: v.string(),
@@ -139,5 +152,6 @@ export default defineSchema({
     savedAt: v.number(),
   })
     .index("by_user", ["userId", "savedAt"])
-    .index("by_user_event", ["userId", "eventId"]),
+    .index("by_user_event", ["userId", "eventId"])
+    .index("by_event", ["eventId"]),
 });

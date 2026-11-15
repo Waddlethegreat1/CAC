@@ -70,7 +70,8 @@ describe("backend", () => {
 
   test("normalize drops events outside the Bay Area", async () => {
     const raw = { ...rawHackathon(new Date().toISOString()), location: { online: false, name: "ASU Tempe Campus" } };
-    expect(await normalize(raw)).toBeNull();
+    const geocode = async () => ({ lat: 33.4242, lng: -111.9281, city: "Tempe" });
+    expect(await normalize(raw, { geocode })).toBeNull();
   });
 
   test("saves toggle per user", async () => {
