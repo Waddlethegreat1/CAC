@@ -45,7 +45,7 @@ export function ShareContactToggle({ connectionId, companyName, shareContact, ac
         />
       </View>
       <Text style={styles.meta}>
-        Shares the email, phone, LinkedIn and affiliation saved on your profile with this company only, and only once you&apos;re connected. You can turn it off at any time. {status}
+        Shares the email, phone and LinkedIn saved on your profile with this company only, and only once you&apos;re connected. You can turn it off at any time. {status}
       </Text>
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
     </View>

@@ -75,7 +75,7 @@ export function ProfessionalFields({ value, errors, onChange, testIDPrefix }: Pr
           </View>
         );
       })}
-      <Text style={styles.hint}>Companies that hosted events you went to can see these, along with your name and school. Contact details stay private</Text>
+      <Text style={styles.hint}>Members of verified companies that hosted events you marked Going or checked in to can see these, along with your name and school. Your email, phone and LinkedIn stay private unless you share them</Text>
     </View>
   );
 }

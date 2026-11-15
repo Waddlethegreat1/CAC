@@ -36,7 +36,6 @@ export default function EventTalentScreen() {
   const talent = useQuery(api.connections.eventTalent, deviceId ? { deviceId, companyId: id, eventId } : "skip");
   const express = useMutation(api.connections.expressInterestInTalent);
   const [target, setTarget] = useState<{ userId: Id<"users">; name: string } | null>(null);
-  const [sent, setSent] = useState<Record<string, string>>({});
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -46,14 +45,14 @@ export default function EventTalentScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={[styles.meta, { marginTop: space.md }]}>
-            Talent who marked Going before this event ended, or checked in to it. You see names only. Contact details appear only if you connect and they choose to share them
+            Talent who marked Going before this event ended, or checked in to it. Open a profile for their school, prior roles and experience. Contact details appear only if you connect and they choose to share them
           </Text>
-          <SectionTitle>{talent.length ? `${talent.length} attended` : "Attendees"}</SectionTitle>
+          <SectionTitle>{talent.length ? `${talent.length} went` : "Attendees"}</SectionTitle>
           {talent.length ? (
             <Card>
               {talent.map((t, i) => {
                 const name = t.talent.name ?? "Unnamed talent";
-                const status = sent[t.talent.userId] ?? t.connectionStatus;
+                const status = t.connectionStatus;
                 const live = status === "pending" || status === "accepted";
                 return (
                   <View key={t.talent.userId} testID={`talent-row-${i}`} style={[styles.row, i > 0 && styles.divider]}>
@@ -85,8 +84,7 @@ export default function EventTalentScreen() {
         onClose={() => setTarget(null)}
         onSubmit={async (message) => {
           if (!deviceId || !target) return;
-          const result = await express({ deviceId, companyId: id, talentUserId: target.userId, eventId, ...(message ? { message } : {}) });
-          setSent((cur) => ({ ...cur, [target.userId]: result.status }));
+          await express({ deviceId, companyId: id, talentUserId: target.userId, eventId, ...(message ? { message } : {}) });
         }}
       />
     </SafeAreaView>

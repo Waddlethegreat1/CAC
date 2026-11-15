@@ -113,11 +113,11 @@ function OnboardingForm({ deviceId, existing }: { deviceId: string; existing: Do
 
   const finish = async () => {
     const checked = checkContact(contact);
-    const pro = checkProfessional(professional);
-    if (!role || !place || "errors" in checked || "errors" in pro) return;
+    const pro = role === "student" ? checkProfessional(professional) : null;
+    if (!role || !place || "errors" in checked || (pro && "errors" in pro)) return;
     setSaving(true);
     try {
-      await upsert({ deviceId, role, interests, ...place, radiusKm, ...checked.values, ...(role === "student" ? pro.values : {}) });
+      await upsert({ deviceId, role, interests, ...place, radiusKm, ...checked.values, ...(pro && "values" in pro ? pro.values : {}) });
       if (needsAccount && !(await createAccount(checked.values.email))) return;
       router.replace("/feed");
     } catch (e) {

@@ -104,7 +104,7 @@ function useActions(connectionId: Id<"connections">) {
     error,
     accept: () => run(() => respond({ deviceId: deviceId!, connectionId, accept: true })),
     decline: async (name: string) => {
-      if (await confirm(`Decline ${name}?`, `They won't be told directly, and they can't send you a new request for 30 days.`, "Decline")) await run(() => respond({ deviceId: deviceId!, connectionId, accept: false }));
+      if (await confirm(`Decline ${name}?`, `They'll see it was declined and can't send you a new request for 30 days.`, "Decline")) await run(() => respond({ deviceId: deviceId!, connectionId, accept: false }));
     },
     withdraw: () => run(() => withdraw({ deviceId: deviceId!, connectionId })),
     block: async (name: string) => {

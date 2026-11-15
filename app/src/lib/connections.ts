@@ -18,7 +18,7 @@ const COPY: Record<string, string> = {
   event_ended: "This event has already ended, so it can't be marked Going",
 };
 
-const SERVER_DETAIL = new Set(["invalid", "forbidden", "rate_limited"]);
+const SERVER_DETAIL = new Set(["invalid", "forbidden", "rate_limited", "not_eligible", "blocked"]);
 
 export function errorCode(error: unknown) {
   return error instanceof ConvexError && typeof error.data?.code === "string" ? (error.data.code as string) : null;

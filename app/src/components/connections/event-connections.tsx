@@ -67,7 +67,7 @@ function HostRow({ eventId, eventTitle, company, status, blockedUntil, first }: 
       <InterestSheet
         visible={open}
         title={`Interested in ${company.name}`}
-        subtitle={`They'll see your name and that you went to ${eventTitle}. Your contact details stay private unless you choose to share them after you connect`}
+        subtitle={`They'll see your name, that you went to ${eventTitle}, and your profile (school, prior roles, experience). Your email, phone and LinkedIn stay private unless you choose to share them after you connect`}
         placeholder="Add a short note, like what caught your eye"
         submitLabel="Send interest"
         onClose={() => setOpen(false)}

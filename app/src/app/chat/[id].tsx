@@ -72,7 +72,10 @@ export default function ChatScreen() {
 
 function Pages({ connectionId, before, depth, onOlder }: { connectionId: Id<"connections">; before?: number; depth: number; onOlder: () => void }) {
   const deviceId = useDeviceId();
-  const page = useQuery(api.chat.list, deviceId ? { deviceId, connectionId, limit: PAGE, ...(before === undefined ? {} : { before }) } : "skip");
+  const live = useQuery(api.chat.list, deviceId ? { deviceId, connectionId, limit: PAGE, ...(before === undefined ? {} : { before }) } : "skip");
+  const [last, setLast] = useState(live);
+  if (live !== undefined && live !== last) setLast(live);
+  const page = live ?? last;
   if (page === undefined) return <ActivityIndicator color={colors.ember} />;
   return (
     <>

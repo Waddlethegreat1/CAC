@@ -25,7 +25,7 @@ export default function CompaniesScreen() {
       <ScreenHeader title="Companies" />
       {isHost === false ? (
         <View style={styles.content}>
-          <Notice testID="host-required" title="For hosts" body={errorCopy(null) && "Company features are for verified hosts. Verify your work email to use them"} />
+          <Notice testID="host-required" title="For hosts" body="Company features are for verified hosts. Verify your work email to use them" />
         </View>
       ) : mine === undefined ? (
         <ActivityIndicator style={{ flex: 1 }} color={colors.ember} />
