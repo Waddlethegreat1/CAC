@@ -76,4 +76,4 @@ export function groupBySection<T extends { startTime: number }>(events: T[], now
     .filter((s) => s.data.length > 0);
 }
 
-export const SOURCE_LABEL: Record<string, string> = { devpost: "Devpost", luma: "Luma", eventbrite: "Eventbrite", meetup: "Meetup", seed: "Scout picks" };
+export const SOURCE_LABEL: Record<string, string> = { devpost: "Devpost", luma: "Luma", eventbrite: "Eventbrite", meetup: "Meetup", jsonld: "the organizer's page", seed: "Scout picks" };
