@@ -26,6 +26,10 @@ export const audience = v.union(
 
 export const role = v.union(v.literal("student"), v.literal("investor"));
 
+export const companyRole = v.union(v.literal("owner"), v.literal("member"));
+export const connectionSide = v.union(v.literal("talent"), v.literal("company"));
+export const connectionStatus = v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("withdrawn"));
+
 export const eventFields = {
   title: v.string(),
   description: v.string(),
@@ -168,6 +172,8 @@ export default defineSchema({
     phone: v.optional(v.string()),
     affiliation: v.optional(v.string()),
     linkedin: v.optional(v.string()),
+    priorRoles: v.optional(v.string()),
+    experience: v.optional(v.string()),
     emailVerificationTime: v.optional(v.number()),
     phoneVerificationTime: v.optional(v.number()),
   })
@@ -227,6 +233,70 @@ export default defineSchema({
     ratingSum: v.number(),
     investorConfirmations: v.number(),
   }).index("by_event", ["eventId"]),
+
+  companies: defineTable({
+    name: v.string(),
+    slug: v.string(),
+    website: v.optional(v.string()),
+    logo: v.optional(v.string()),
+    createdAt: v.number(),
+    verifiedAt: v.optional(v.number()),
+    verifiedBy: v.optional(v.string()),
+  }).index("by_slug", ["slug"]),
+
+  company_members: defineTable({
+    companyId: v.id("companies"),
+    userId: v.id("users"),
+    role: companyRole,
+    createdAt: v.number(),
+  })
+    .index("by_company", ["companyId", "userId"])
+    .index("by_user", ["userId", "companyId"]),
+
+  company_invites: defineTable({
+    companyId: v.id("companies"),
+    email: v.string(),
+    invitedBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_company", ["companyId", "email"])
+    .index("by_email", ["email", "companyId"]),
+
+  event_hosts: defineTable({
+    eventId: v.id("events"),
+    companyId: v.id("companies"),
+    claimedBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_event", ["eventId", "companyId"])
+    .index("by_company", ["companyId", "eventId"]),
+
+  connections: defineTable({
+    talentUserId: v.id("users"),
+    companyId: v.id("companies"),
+    eventId: v.optional(v.id("events")),
+    initiatedBy: connectionSide,
+    initiatorUserId: v.id("users"),
+    status: connectionStatus,
+    message: v.optional(v.string()),
+    shareContact: v.boolean(),
+    declinedBy: v.optional(connectionSide),
+    createdAt: v.number(),
+    respondedAt: v.optional(v.number()),
+  })
+    .index("by_pair", ["talentUserId", "companyId"])
+    .index("by_talent_status", ["talentUserId", "status", "createdAt"])
+    .index("by_company_status", ["companyId", "status", "createdAt"])
+    .index("by_talent_initiated", ["talentUserId", "initiatedBy", "createdAt"])
+    .index("by_company_initiated", ["companyId", "initiatedBy", "createdAt"])
+    .index("by_event", ["eventId"]),
+
+  messages: defineTable({
+    connectionId: v.id("connections"),
+    senderUserId: v.id("users"),
+    body: v.string(),
+    createdAt: v.number(),
+  }).index("by_connection", ["connectionId", "createdAt"]),
 
   ...authOnlyTables,
 });
