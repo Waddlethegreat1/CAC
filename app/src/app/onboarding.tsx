@@ -67,7 +67,7 @@ function OnboardingForm({ deviceId, existing }: { deviceId: string; existing: Do
     if (!role || !place) return;
     setSaving(true);
     try {
-      await upsert({ deviceId, role, interests, ...place });
+      await upsert({ deviceId, role, interests, ...place, radiusKm });
       router.replace("/feed");
     } catch {
       setError("Couldn't save your profile: no connection. Try again");
