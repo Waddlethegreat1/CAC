@@ -226,3 +226,150 @@ describe("fixtures.seedPastCommitment", () => {
     expect(await t.query(api.attendance.pending, { deviceId, now: Date.now() })).toEqual([]);
   });
 });
+
+describe("fixtures.seedTalentMatch", () => {
+  const deviceId = "fresh-talent-device";
+  const tick = () => vi.setSystemTime(Date.now() + 1000);
+
+  beforeEach(() => vi.useFakeTimers({ toFake: ["Date"] }));
+  afterEach(() => vi.useRealTimers());
+
+  async function seed(t: ReturnType<typeof convexTest>, device = deviceId) {
+    const result = await t.mutation(api.fixtures.seedTalentMatch, { deviceId: device });
+    tick();
+    return result;
+  }
+
+  async function match(t: ReturnType<typeof convexTest>) {
+    const seeded = await seed(t);
+    const { connectionId } = await t.mutation(api.connections.expressInterest, { deviceId, companyId: seeded.companyId, eventId: seeded.eventId });
+    expect(await t.mutation(api.connections.respond, { deviceId: seeded.memberDeviceId, connectionId, accept: true })).toEqual({ status: "accepted" });
+    return { ...seeded, connectionId };
+  }
+
+  test("refuses to run unless ENABLE_TEST_FIXTURES is 1", async () => {
+    const t = convexTest(schema, modules);
+    for (const value of [undefined, "0", "true"]) {
+      vi.stubEnv("ENABLE_TEST_FIXTURES", value);
+      await expect(t.mutation(api.fixtures.seedTalentMatch, { deviceId })).rejects.toThrow(/ENABLE_TEST_FIXTURES/);
+    }
+    const tables = await t.run(async (ctx) => Promise.all((["events", "users", "companies", "company_members", "event_hosts", "attendance"] as const)
+      .map((table) => ctx.db.query(table).collect())));
+    expect(tables.flat()).toEqual([]);
+  });
+
+  test("seeds a verified host company, its member, and an ended synthetic event the device went to", async () => {
+    const t = convexTest(schema, modules);
+    const seeded = await seed(t);
+    expect(seeded.memberDeviceId).toBe("fixture-scout-test-co-member");
+    const [event, company, member, claims, memberships] = await t.run(async (ctx) => [
+      await ctx.db.get(seeded.eventId),
+      await ctx.db.get(seeded.companyId),
+      await ctx.db.get(seeded.memberUserId),
+      await ctx.db.query("event_hosts").collect(),
+      await ctx.db.query("company_members").collect(),
+    ] as const);
+    expect(event).toMatchObject({ sourceId: "cac-scout-test-match-event", title: "[TEST] Scout fixture demo day", synthetic: true, city: "San Francisco", hosts: ["Scout Test Co"] });
+    expect(event!.endTime).toBeLessThan(Date.now());
+    expect(company).toMatchObject({ name: "Scout Test Co", slug: "scout-test-co", domain: "scout-test.example", verifiedBy: "fixture" });
+    expect(company!.verifiedAt).toBeTypeOf("number");
+    expect(member).toMatchObject({ deviceId: seeded.memberDeviceId, role: "host", workDomain: "scout-test.example", workEmailVerifiedVia: "dev" });
+    expect(claims).toMatchObject([{ eventId: seeded.eventId, companyId: seeded.companyId, status: "approved" }]);
+    expect(memberships).toMatchObject([{ companyId: seeded.companyId, userId: seeded.memberUserId, role: "owner" }]);
+    expect(await t.query(api.users.get, { deviceId })).toMatchObject({ deviceId, role: "student" });
+
+    const discover = await t.query(api.connections.discover, { deviceId });
+    expect(discover).toMatchObject([{ event: { _id: seeded.eventId }, companies: [{ company: { _id: seeded.companyId, verified: true }, connectionStatus: null }] }]);
+  });
+
+  test("lets the device express interest and the member see it in eventMatches and the inbox", async () => {
+    const t = convexTest(schema, modules);
+    const seeded = await seed(t);
+    const talentUserId = (await t.query(api.users.get, { deviceId }))!._id;
+    expect(await t.mutation(api.connections.expressInterest, { deviceId, companyId: seeded.companyId, eventId: seeded.eventId }))
+      .toMatchObject({ status: "pending" });
+
+    const matches = await t.query(api.hosts.eventMatches, { deviceId: seeded.memberDeviceId, eventId: seeded.eventId, companyId: seeded.companyId });
+    expect(matches.matches).toMatchObject([{ talent: { userId: talentUserId }, attended: true, interested: true, mutual: false }]);
+    const inbox = await t.query(api.connections.inbox, { deviceId: seeded.memberDeviceId });
+    expect(inbox.companies).toMatchObject([{ company: { _id: seeded.companyId }, role: "owner", incoming: [{ talent: { userId: talentUserId } }] }]);
+  });
+
+  test("opens chat for both sides after a mutual match", async () => {
+    const t = convexTest(schema, modules);
+    const { connectionId, memberDeviceId, eventId, companyId } = await match(t);
+    const matches = await t.query(api.hosts.eventMatches, { deviceId: memberDeviceId, eventId, companyId });
+    expect(matches.matches).toMatchObject([{ mutual: true }]);
+    await t.mutation(api.chat.send, { deviceId, connectionId, body: "Hi from talent" });
+    tick();
+    await t.mutation(api.chat.send, { deviceId: memberDeviceId, connectionId, body: "Hi from Scout Test Co" });
+    for (const [device, mine] of [[deviceId, [true, false]], [memberDeviceId, [false, true]]] as const) {
+      const { messages } = await t.query(api.chat.list, { deviceId: device, connectionId });
+      expect(messages.map((m) => [m.body, m.mine, m.fromTalent])).toEqual([["Hi from talent", mine[0], true], ["Hi from Scout Test Co", mine[1], false]]);
+    }
+  });
+
+  test("is idempotent per device, keeps existing connections, and stays eligible for a second device", async () => {
+    const t = convexTest(schema, modules);
+    const first = await match(t);
+    const { connectionId, ...ids } = first;
+    expect(await seed(t)).toEqual(ids);
+    const tables = await t.run(async (ctx) => ({
+      events: await ctx.db.query("events").collect(),
+      companies: await ctx.db.query("companies").collect(),
+      users: await ctx.db.query("users").collect(),
+      members: await ctx.db.query("company_members").collect(),
+      claims: await ctx.db.query("event_hosts").collect(),
+      attendance: await ctx.db.query("attendance").collect(),
+      connections: await ctx.db.query("connections").collect(),
+    }));
+    expect(Object.fromEntries(Object.entries(tables).map(([k, rows]) => [k, rows.length])))
+      .toEqual({ events: 1, companies: 1, users: 2, members: 1, claims: 1, attendance: 1, connections: 1 });
+    expect(tables.connections).toMatchObject([{ _id: connectionId, status: "accepted" }]);
+
+    const second = await seed(t, "second-talent-device");
+    expect(second).toEqual(ids);
+    for (const device of [deviceId, "second-talent-device"]) {
+      expect(await t.query(api.connections.discover, { deviceId: device })).toHaveLength(1);
+    }
+    expect(await t.mutation(api.connections.expressInterest, { deviceId: "second-talent-device", companyId: ids.companyId, eventId: ids.eventId }))
+      .toMatchObject({ status: "pending" });
+    const matches = await t.query(api.hosts.eventMatches, { deviceId: ids.memberDeviceId, eventId: ids.eventId, companyId: ids.companyId });
+    expect(matches.matches).toHaveLength(2);
+  });
+
+  test("keeps the event out of feed.ranked, investor.ranked, and QA", async () => {
+    const t = convexTest(schema, modules);
+    await t.mutation(api.users.upsert, { ...sfStudent, deviceId });
+    const { eventId } = await seed(t);
+    const feed = await t.query(api.feed.ranked, { deviceId });
+    expect(feed?.events.map((e) => e._id)).not.toContain(eventId);
+    const investor = await t.query(api.investor.ranked, { deviceId });
+    expect(investor.events.map((e) => e._id)).not.toContain(eventId);
+    const qa = await t.query(internal.qa.report, {});
+    expect(qa.totals.events).toBe(0);
+  });
+
+  test("purgeSynthetic removes the event, company, member, claims, connections, and messages and leaves no orphans", async () => {
+    const t = convexTest(schema, modules);
+    const { connectionId } = await match(t);
+    await t.mutation(api.chat.send, { deviceId, connectionId, body: "Hi" });
+    const realCompany = await t.run((ctx) => ctx.db.insert("companies", { name: "Real Co", slug: "real-co", createdAt: 1 }));
+
+    expect(await t.mutation(internal.fixtures.purgeSynthetic, {})).toMatchObject({ events: 1, more: false });
+    const tables = await t.run(async (ctx) => ({
+      events: await ctx.db.query("events").collect(),
+      companies: await ctx.db.query("companies").collect(),
+      users: await ctx.db.query("users").collect(),
+      members: await ctx.db.query("company_members").collect(),
+      claims: await ctx.db.query("event_hosts").collect(),
+      attendance: await ctx.db.query("attendance").collect(),
+      connections: await ctx.db.query("connections").collect(),
+      messages: await ctx.db.query("messages").collect(),
+    }));
+    expect(tables.companies.map((c) => c._id)).toEqual([realCompany]);
+    expect(tables.users.map((u) => u.deviceId)).toEqual([deviceId]);
+    expect({ ...tables, companies: [], users: [] }).toEqual({ events: [], companies: [], users: [], members: [], claims: [], attendance: [], connections: [], messages: [] });
+    expect(await t.query(api.connections.inbox, { deviceId })).toMatchObject({ talent: { incoming: [], outgoing: [], connected: [] } });
+  });
+});
