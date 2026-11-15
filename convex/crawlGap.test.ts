@@ -15,6 +15,10 @@ const NYC_URL = "https://luma.com/nyc-founders-mixer";
 const NYC_PAGE = '<html><head><script type="application/ld+json">' +
   JSON.stringify({ "@context": "https://schema.org", "@type": "Event", name: "NYC Founders Mixer", startDate: "2026-12-09T18:00:00-05:00", url: NYC_URL, location: { "@type": "Place", name: "Betaworks", address: "29 Little West 12th St, New York, NY", geo: { latitude: 40.7397, longitude: -74.0079 } } }) +
   "</script></head></html>";
+const ONLINE_URL = "https://luma.com/online-roundtable";
+const ONLINE_PAGE = '<html><head><script type="application/ld+json">' +
+  JSON.stringify({ "@context": "https://schema.org", "@type": "Event", name: "Online roundtable", startDate: "2026-12-14T12:00:00-06:00", eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode", location: { "@type": "VirtualLocation", url: ONLINE_URL } }) +
+  "</script></head></html>";
 
 const raw = (sourceId: string, url: string, o: Partial<RawEvent> = {}): RawEvent => ({
   source: "fixture",
@@ -62,14 +66,14 @@ afterEach(() => {
 
 describe("location enrichment", () => {
   test("fills location from the Luma or Meetup event page once, and re-crawls reuse the cache", async () => {
-    const items = [raw("luma", LUMA_URL), raw("meetup", MEETUP_URL), raw("nyc", NYC_URL), raw("other", "https://example.org/e/1"), raw("placed", "https://luma.com/has-address", { location: { online: false, address: "Hacker Dojo, Mountain View" } })];
-    const calls = stub({ [LUMA_URL]: lumaPage, [MEETUP_URL]: meetupPage, [NYC_URL]: NYC_PAGE }, () => items);
+    const items = [raw("luma", LUMA_URL), raw("meetup", MEETUP_URL), raw("nyc", NYC_URL), raw("other", "https://example.org/e/1"), raw("online", ONLINE_URL), raw("placed", "https://luma.com/has-address", { location: { online: false, address: "Hacker Dojo, Mountain View" } })];
+    const calls = stub({ [LUMA_URL]: lumaPage, [MEETUP_URL]: meetupPage, [NYC_URL]: NYC_PAGE, [ONLINE_URL]: ONLINE_PAGE }, () => items);
     const t = convexTest(schema, modules);
     const feedId = await t.run((ctx) => ctx.db.insert("feeds", { source: "fixture", name: "fixture", url: FEED_URL, enabled: true, intervalMinutes: 60 }));
 
     await t.action(internal.ingest.runFeed, { feedId });
     const [job] = await scheduledEnrich(t);
-    expect((job.args[0] as { targets: { url: string }[] }).targets.map((x) => x.url)).toEqual([LUMA_URL, MEETUP_URL, NYC_URL]);
+    expect((job.args[0] as { targets: { url: string }[] }).targets.map((x) => x.url)).toEqual([LUMA_URL, MEETUP_URL, NYC_URL, ONLINE_URL]);
     await settled(t);
 
     expect(await eventBy(t, "luma")).toMatchObject({ venue: "WorkOS", city: "San Francisco", lat: 37.788385399999996 });
@@ -77,12 +81,14 @@ describe("location enrichment", () => {
     expect((await eventBy(t, "meetup")).lat).toBeDefined();
     expect((await eventBy(t, "nyc")).hiddenAt).toBeDefined();
     expect((await eventBy(t, "other")).lat).toBeUndefined();
+    expect(await eventBy(t, "online")).toMatchObject({ isOnline: true, city: "Online" });
     expect((await eventBy(t, "luma")).hiddenAt).toBeUndefined();
 
-    const pageFetches = () => calls.filter((c) => [LUMA_URL, MEETUP_URL, NYC_URL].includes(c)).length;
-    expect(pageFetches()).toBe(3);
+    const pageFetches = () => calls.filter((c) => [LUMA_URL, MEETUP_URL, NYC_URL, ONLINE_URL].includes(c)).length;
+    expect(pageFetches()).toBe(4);
     await t.action(internal.ingest.runFeed, { feedId });
-    expect(pageFetches()).toBe(3);
+    expect(pageFetches()).toBe(4);
+    expect(await eventBy(t, "online")).toMatchObject({ isOnline: true, city: "Online" });
     expect(await scheduledEnrich(t)).toHaveLength(1);
     expect(await eventBy(t, "luma")).toMatchObject({ venue: "WorkOS", lat: 37.788385399999996 });
     expect((await eventBy(t, "nyc")).hiddenAt).toBeDefined();

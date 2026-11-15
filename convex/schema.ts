@@ -58,6 +58,7 @@ export const eventPlace = v.object({
   lat: v.optional(v.number()),
   lng: v.optional(v.number()),
   city: v.string(),
+  isOnline: v.optional(v.boolean()),
 });
 
 export const eventSource = v.object({ url: v.string(), source: v.string(), sourceId: v.string() });

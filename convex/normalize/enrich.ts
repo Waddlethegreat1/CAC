@@ -2,7 +2,7 @@ import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc } from "../_generated/dataModel";
 import { internalAction, internalMutation, internalQuery, type QueryCtx } from "../_generated/server";
-import { parseEventPage } from "../adapters/jsonld";
+import { isOnlineEventPage, parseEventPage } from "../adapters/jsonld";
 import { RobotsDisallowedError, makeHttp } from "../lib/http";
 import { scoutingFields } from "../lib/scouting";
 import { markListingsGone } from "../lib/store";
@@ -112,17 +112,20 @@ export const run = internalAction({
 
     const fetchPage = async (url: string) => {
       try {
-        const events = parseEventPage(await http.text(url, "text/html"), url);
+        const html = await http.text(url, "text/html");
+        const events = parseEventPage(html, url);
         const loc = (events.find((e) => sameUrl(e.url, url)) ?? events[0])?.location;
+        if (!loc && isOnlineEventPage(html)) return { url, status: "found" as const, place: { city: "Online", isOnline: true } };
         if (!loc || loc.online) return { url, status: "none" as const };
         const name = loc.name && !PLACEHOLDER_PLACE.test(loc.name) ? loc.name : undefined;
         const address = loc.address && !PLACEHOLDER_PLACE.test(loc.address) ? loc.address : undefined;
         const located = await locate({ ...loc, name, address }, geocode);
         if (!located) return { url, status: "found" as const, outsideBayArea: true };
         if (located.lat === undefined && !address && !name) return { url, status: "none" as const };
-        const place = Object.fromEntries(
-          Object.entries({ venue: name, address, lat: located.lat, lng: located.lng, city: located.city }).filter(([, x]) => x !== undefined),
-        ) as EventPlace;
+        const place: EventPlace = { city: located.city };
+        if (name) place.venue = name;
+        if (address) place.address = address;
+        if (located.lat !== undefined && located.lng !== undefined) Object.assign(place, { lat: located.lat, lng: located.lng });
         return { url, status: "found" as const, place };
       } catch (err) {
         const error = err instanceof RobotsDisallowedError ? "robots.txt disallows the page" : err instanceof Error ? err.message : String(err);
