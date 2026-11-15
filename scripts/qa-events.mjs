@@ -24,7 +24,8 @@ const lines = [
   "## Totals",
   table(
     [
-      ["events (excluding seed/fixture)", t.events],
+      ["events (excluding seed/fixture and hidden)", t.events],
+      ["hidden (no longer listed by any source)", t.hidden],
       ["upcoming", t.upcoming],
       ["upcoming, Bay Area in person", t.bayAreaInPerson],
       ["upcoming, online", t.online],

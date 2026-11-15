@@ -44,7 +44,7 @@ describe("qa.report", () => {
       await ctx.db.insert("events", row("demo", { source: "seed" }));
     });
     const r = await t.query(internal.qa.report, { now: NOW });
-    expect(r.totals).toEqual({ events: 5, upcoming: 4, bayAreaInPerson: 2, online: 1, noLocation: 1 });
+    expect(r.totals).toEqual({ events: 5, hidden: 0, upcoming: 4, bayAreaInPerson: 2, online: 1, noLocation: 1 });
     expect(r.missing).toEqual({ coordinates: 1, venue: 2, endTime: 3 });
     expect(r.duplicates).toMatchObject({ flaggedPairs: 1, eventsInExcess: 1, rate: 25 });
     expect(r.duplicates.pairs[0]).toMatchObject({ a: "AI Founders Mixer", b: "AI Founders Mixer!", minutesApart: 60 });

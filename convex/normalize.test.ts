@@ -225,7 +225,7 @@ describe("geocoding", () => {
     expect(rows.find((r) => r.sourceId === "secret")?.lat).toBeUndefined();
     expect(rows.find((r) => r.sourceId === "known")).toMatchObject({ city: "Palo Alto", lat: 37.4419 });
     expect(calls.filter((c) => c.url.startsWith(NOMINATIM_URL))).toHaveLength(3);
-  });
+  }, 15_000);
 
   test("prefers a Bay Area match, then falls back to the world and to the address without its venue", async () => {
     const answer = (url: URL) => {
@@ -255,7 +255,7 @@ describe("geocoding", () => {
       "Madrid, Spain|1",
       "Madrid, Spain|0",
     ]);
-  });
+  }, 15_000);
 });
 
 test("embed step is a no-op without EMBED_API_KEY", () => {

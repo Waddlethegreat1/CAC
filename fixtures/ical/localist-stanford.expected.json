@@ -11,6 +11,7 @@
     "location": {
       "online": false,
       "address": "Cantor Arts Center, Stanford Family Rooms",
+      "name": "Cantor Arts Center",
       "lat": 37.432981,
       "lng": -122.170494
     }
@@ -27,6 +28,7 @@
     "location": {
       "online": false,
       "address": "Green Library, Bing Wing",
+      "name": "Green Library",
       "lat": 37.426984,
       "lng": -122.167998
     }
@@ -43,6 +45,7 @@
     "location": {
       "online": false,
       "address": "Hohbach Hall",
+      "name": "Hohbach Hall",
       "lat": 37.426631,
       "lng": -122.167086
     }
@@ -59,6 +62,7 @@
     "location": {
       "online": false,
       "address": "Cantor Arts Center, Stanford Family Room (122)",
+      "name": "Cantor Arts Center",
       "lat": 37.432981,
       "lng": -122.170494
     }
@@ -75,6 +79,7 @@
     "location": {
       "online": false,
       "address": "Y2E2 Building, 382",
+      "name": "Y2E2 Building",
       "lat": 37.42816,
       "lng": -122.175935
     }
@@ -117,6 +122,7 @@
     "location": {
       "online": false,
       "address": "Braun Music Center, Campbell Recital Hall",
+      "name": "Braun Music Center",
       "lat": 37.423758,
       "lng": -122.169296
     }
@@ -133,6 +139,7 @@
     "location": {
       "online": false,
       "address": "Rogers House, 102",
+      "name": "Rogers House",
       "lat": 37.423453,
       "lng": -122.17193
     }
@@ -162,6 +169,7 @@
     "location": {
       "online": false,
       "address": "Green Library, Bing Wing",
+      "name": "Green Library",
       "lat": 37.426984,
       "lng": -122.167998
     }
@@ -178,6 +186,7 @@
     "location": {
       "online": false,
       "address": "Anderson Collection, Wisch Family Gallery",
+      "name": "Anderson Collection",
       "lat": 37.433768,
       "lng": -122.170791
     }
@@ -194,6 +203,7 @@
     "location": {
       "online": false,
       "address": "Anderson Collection, Wisch Family Gallery",
+      "name": "Anderson Collection",
       "lat": 37.433768,
       "lng": -122.170791
     }
@@ -210,6 +220,7 @@
     "location": {
       "online": false,
       "address": "The Well House, Computer Cluster, downstairs",
+      "name": "The Well House",
       "lat": 37.421896,
       "lng": -122.169177
     }

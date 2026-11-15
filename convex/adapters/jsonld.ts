@@ -34,6 +34,11 @@ export function parseEventPage(html: string, pageUrl: string): RawEvent[] {
   return [...events.values()];
 }
 
+export function isOnlineEventPage(html: string): boolean {
+  const nodes = readJsonLd(html).filter(isEventNode);
+  return nodes.length > 0 && nodes.every(isOnlineOnly);
+}
+
 function readJsonLd(html: string): Node[] {
   const nodes: Node[] = [];
   const visit = (value: unknown) => {

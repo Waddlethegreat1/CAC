@@ -53,7 +53,8 @@ export function createClient(options: ClientOptions): CompleteFn {
         continue;
       }
       if (!res.ok) throw new Error(`model request failed: HTTP ${res.status} ${(await res.text()).slice(0, 300)}`);
-      const body = (await res.json()) as { choices?: { message?: { content?: string | null } }[] };
+      const body = (await res.json()) as { choices?: { message?: { content?: string | null } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } };
+      if (body.usage) console.log(`llm usage model=${model} prompt=${body.usage.prompt_tokens ?? 0} completion=${body.usage.completion_tokens ?? 0} total=${body.usage.total_tokens ?? 0}`);
       const content = body.choices?.[0]?.message?.content;
       if (!content) throw new Error("model returned no content");
       return content;
