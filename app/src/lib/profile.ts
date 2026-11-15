@@ -2,12 +2,13 @@ import * as Location from "expo-location";
 
 import { BAY_AREA_CITIES, inBayArea, nearestCity } from "@/convex/lib/geo";
 
-export type Role = "student" | "investor";
+export type Role = "student" | "investor" | "host";
 export type Place = { city: string; lat: number; lng: number; locationSource: "device" | "city" };
 
 export const ROLE_DEFAULT_INTERESTS: Record<Role, string[]> = {
   student: ["hackathons", "pitch", "networking"],
   investor: ["pitch", "vc", "ai"],
+  host: ["hackathons", "networking", "careers"],
 };
 
 export const AREAS = BAY_AREA_CITIES;

@@ -3,6 +3,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { ended } from "../attendanceModel";
 import { companyRole, connectionSide, connectionStatus, role } from "../schema";
+import { requireHost } from "./identity";
 
 export const DAY = 86_400_000;
 export const BLOCK_MS = 30 * DAY;
@@ -18,7 +19,8 @@ export const MAX_DISCOVER_EVENTS = 200;
 export const MAX_EVENT_TALENT = 500;
 
 export type Side = "talent" | "company";
-export type ErrorCode = "not_onboarded" | "not_found" | "forbidden" | "not_eligible" | "blocked" | "rate_limited" | "invalid" | "company_unverified";
+export type ErrorCode = "not_onboarded" | "not_found" | "forbidden" | "not_eligible" | "blocked" | "rate_limited" | "invalid" | "company_unverified"
+  | "host_required" | "personal_email" | "email_not_configured" | "invalid_code" | "code_expired" | "too_many_attempts" | "domain_taken";
 
 export const fail = (code: ErrorCode, message: string): never => {
   throw new ConvexError({ code, message });
@@ -78,14 +80,49 @@ export async function isMember(ctx: QueryCtx, companyId: Id<"companies">, userId
   return (await membershipOf(ctx, companyId, userId)) !== null;
 }
 
-export async function requireMember(ctx: QueryCtx, companyId: Id<"companies">, userId: Id<"users">) {
-  const membership = await membershipOf(ctx, companyId, userId);
+export async function requireMember(ctx: QueryCtx, companyId: Id<"companies">, user: Doc<"users">) {
+  requireHost(user);
+  const membership = await membershipOf(ctx, companyId, user._id);
   if (!membership) fail("forbidden", "Only members of this company can do that");
   return membership!;
 }
 
-export const hosts = async (ctx: QueryCtx, companyId: Id<"companies">, eventId: Id<"events">) =>
-  (await ctx.db.query("event_hosts").withIndex("by_event", (q) => q.eq("eventId", eventId).eq("companyId", companyId)).unique()) !== null;
+export const claimOf = (ctx: QueryCtx, companyId: Id<"companies">, eventId: Id<"events">) =>
+  ctx.db.query("event_hosts").withIndex("by_event", (q) => q.eq("eventId", eventId).eq("companyId", companyId)).unique();
+
+export const isApproved = (claim: Doc<"event_hosts"> | null) => claim !== null && claim.status !== "pending";
+
+export const hosts = async (ctx: QueryCtx, companyId: Id<"companies">, eventId: Id<"events">) => isApproved(await claimOf(ctx, companyId, eventId));
+
+export const hostSlugs = (event: Doc<"events">) => [...event.hosts, ...(event.organizer ? [event.organizer] : [])].map(slugify);
+
+export function onDomain(event: Doc<"events">, domain: string) {
+  return [event.url, ...(event.sources ?? []).map((s) => s.url)].some((raw) => {
+    try {
+      const host = new URL(raw).hostname.toLowerCase();
+      return host === domain || host.endsWith(`.${domain}`);
+    } catch {
+      return false;
+    }
+  });
+}
+
+export const profileView = v.object({
+  talent: v.object({
+    ...talentView.fields,
+    affiliation: v.union(v.string(), v.null()),
+    priorRoles: v.union(v.string(), v.null()),
+    experience: v.union(v.string(), v.null()),
+  }),
+  connection: v.union(v.null(), v.object({ _id: v.id("connections"), status: connectionStatus, initiatedBy: connectionSide, shareContact: v.boolean() })),
+  contact: v.union(sharedContact, v.null()),
+});
+
+export const toProfile = (talent: Doc<"users">, live: Doc<"connections"> | null) => ({
+  talent: { ...toTalent(talent), affiliation: talent.affiliation ?? null, priorRoles: talent.priorRoles ?? null, experience: talent.experience ?? null },
+  connection: live ? { _id: live._id, status: live.status, initiatedBy: live.initiatedBy, shareContact: live.shareContact } : null,
+  contact: live?.status === "accepted" && live.shareContact ? toContact(talent) : null,
+});
 
 export const endOf = (event: Doc<"events">) => event.endTime ?? event.startTime + 3 * 3_600_000;
 
