@@ -14,7 +14,7 @@ import { colors, layout, space, type } from "@/constants/theme";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useDeviceId } from "@/lib/device";
-import { confirm, errorCopy, timeAgo, useIsVerifiedHost } from "@/lib/connections";
+import { confirm, errorCopy, timeAgo, useHostStatus } from "@/lib/connections";
 
 type Inbox = FunctionReturnType<typeof api.connections.inbox>;
 type TalentConnection = Inbox["talent"]["incoming"][number];
@@ -29,7 +29,7 @@ const EMPTY: Record<Bucket, string> = {
 
 export default function InboxScreen() {
   const deviceId = useDeviceId();
-  const isHost = useIsVerifiedHost();
+  const host = useHostStatus();
   const inbox = useQuery(api.connections.inbox, deviceId ? { deviceId } : "skip");
   const [bucket, setBucket] = useState<Bucket>("incoming");
   const count = (b: Bucket) => (inbox ? inbox.talent[b].length + inbox.companies.reduce((n, c) => n + c[b].length, 0) : 0);
@@ -38,9 +38,9 @@ export default function InboxScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: layout.screenPadding, paddingVertical: space.md }}>
         <Text style={{ ...type.screenTitle, color: colors.ink, flex: 1 }} accessibilityRole="header">Inbox</Text>
-        {isHost ? (
-          <Pressable testID="open-companies" accessibilityRole="button" onPress={() => router.push("/companies")} style={[styles.inline, { minHeight: layout.tapTarget }]}>
-            <Text style={{ ...type.label, color: colors.emberInk }}>Companies</Text>
+        {host?.verified || host?.role === "host" ? (
+          <Pressable testID={host.verified ? "open-companies" : "open-verify"} accessibilityRole="button" onPress={() => router.push(host.verified ? "/companies" : "/host/verify")} style={[styles.inline, { minHeight: layout.tapTarget }]}>
+            <Text style={{ ...type.label, color: colors.emberInk }}>{host.verified ? "Companies" : "Verify work email"}</Text>
             <Icon name="chevron-right" size={16} color={colors.emberInk} />
           </Pressable>
         ) : null}

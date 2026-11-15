@@ -5,24 +5,22 @@ import { Text, View } from "react-native";
 
 import { Button } from "@/components/button";
 import { InterestSheet } from "@/components/connections/interest-sheet";
-import { Card, Notice, SectionTitle, styles, VerificationBadge } from "@/components/connections/ui";
+import { Card, Notice, Pill, SectionTitle, styles, VerificationBadge } from "@/components/connections/ui";
 import { layout } from "@/constants/theme";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useDeviceId } from "@/lib/device";
-import { eventEnded, isPendingVerification, shortDate, useIsVerifiedHost } from "@/lib/connections";
+import { errorCopy, eventEnded, isPendingVerification, shortDate, useIsVerifiedHost } from "@/lib/connections";
 
 type Company = { _id: Id<"companies">; name: string; verified?: boolean };
 
 export function EventConnections({ event }: { event: { _id: Id<"events">; title: string; startTime: number; endTime?: number } }) {
   const deviceId = useDeviceId();
   const isHost = useIsVerifiedHost();
-  const discover = useQuery(api.connections.discover, deviceId ? { deviceId } : "skip");
-  const mine = useQuery(api.companies.mine, deviceId && isHost ? { deviceId } : "skip");
-  if (!eventEnded(event)) return null;
+  const ended = eventEnded(event);
+  const discover = useQuery(api.connections.discover, deviceId && ended ? { deviceId } : "skip");
   const hosts = discover?.find((d) => d.event._id === event._id)?.companies ?? [];
-  const memberships = mine?.memberships ?? [];
-  if (!hosts.length && !memberships.length) return null;
+  if (!hosts.length && !isHost) return null;
   return (
     <View testID="event-connections" style={{ marginHorizontal: layout.screenPadding }}>
       {hosts.length ? (
@@ -36,7 +34,7 @@ export function EventConnections({ event }: { event: { _id: Id<"events">; title:
           <Text style={[styles.meta, { marginTop: 6 }]}>You went to this event, so you can tell its hosts you&apos;re interested. Chat opens when they accept</Text>
         </>
       ) : null}
-      {memberships.map((m) => <HostedEventLink key={m.company._id} company={m.company} eventId={event._id} />)}
+      {isHost ? <HostingSlot eventId={event._id} ended={ended} /> : null}
     </View>
   );
 }
@@ -81,23 +79,63 @@ function HostRow({ eventId, eventTitle, company, status, blockedUntil, first }: 
   );
 }
 
-function HostedEventLink({ company, eventId }: { company: Company; eventId: Id<"events"> }) {
+function HostingSlot({ eventId, ended }: { eventId: Id<"events">; ended: boolean }) {
   const deviceId = useDeviceId();
-  const page = useQuery(api.companies.get, deviceId ? { deviceId, companyId: company._id } : "skip");
-  if (!page?.hostedEvents.some((e) => e._id === eventId)) return null;
+  const status = useQuery(api.hosts.hostingStatus, deviceId ? { deviceId, eventId } : "skip");
+  const mine = useQuery(api.companies.mine, deviceId ? { deviceId } : "skip");
+  const claimHosting = useMutation(api.hosts.claimHosting);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  if (!status || !mine) return null;
+  const verified = mine.memberships.filter((m) => m.company.verified);
+  const claimed = status.claim ? verified.find((m) => m.company._id === status.claim!.companyId)?.company : undefined;
+  if (!status.claim && !status.canClaim) return null;
+  const claim = async (companyId: Id<"companies">) => {
+    if (!deviceId) return;
+    setBusy(companyId);
+    setError(null);
+    try {
+      await claimHosting({ deviceId, eventId, companyId });
+    } catch (e) {
+      setError(errorCopy(e));
+    } finally {
+      setBusy(null);
+    }
+  };
   return (
     <>
-      <SectionTitle>Hosted by {company.name}</SectionTitle>
-      {isPendingVerification(company) ? (
-        <Notice tone="pending" title="Pending verification" body="Scout reviews new companies before they can reach talent. Talent who went will show here once your company is verified" />
-      ) : (
-        <Button
-          testID={`event-talent-${company._id}`}
-          label="See talent who went"
-          variant="outline"
-          onPress={() => router.push({ pathname: "/company/[id]/talent/[eventId]", params: { id: company._id, eventId } })}
-        />
-      )}
+      <SectionTitle>Hosting</SectionTitle>
+      {status.claim?.status === "approved" && claimed ? (
+        <Card testID="hosting-approved" style={{ padding: 14, gap: 8 }}>
+          <View style={styles.inline}>
+            <Pill label="You host this" tone="success" />
+            <Text style={styles.meta}>as {claimed.name}</Text>
+          </View>
+          <Button
+            testID="talent-matches"
+            label="Talent matches"
+            variant="outline"
+            onPress={() => router.push({ pathname: "/company/[id]/matches/[eventId]", params: { id: claimed._id, eventId } })}
+          />
+          {!ended ? <Text style={styles.meta}>Talent who went show up here once the event ends</Text> : null}
+        </Card>
+      ) : status.claim?.status === "pending" ? (
+        <Notice testID="hosting-pending" tone="pending" title="Hosting claim pending" body={`This listing doesn't name ${claimed?.name ?? "your company"} or link to your company's domain, so another verified teammate or Scout needs to approve it`} />
+      ) : null}
+      {status.canClaim && status.claim?.status !== "approved" ? (
+        verified.filter((m) => m.company._id !== status.claim?.companyId).map((m) => (
+          <Button
+            key={m.company._id}
+            testID={`claim-hosting-${m.company._id}`}
+            label={verified.length > 1 ? `I'm hosting this event as ${m.company.name}` : "I'm hosting this event"}
+            variant="outline"
+            style={{ marginTop: 8 }}
+            loading={busy === m.company._id}
+            onPress={() => void claim(m.company._id)}
+          />
+        ))
+      ) : null}
+      {error ? <Text accessibilityRole="alert" style={[styles.error, { marginTop: 6 }]}>{error}</Text> : null}
     </>
   );
 }

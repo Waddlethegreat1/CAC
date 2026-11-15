@@ -56,7 +56,7 @@ export default function CompanyScreen() {
       </SafeAreaView>
     );
   }
-  const { company, myRole, members, pendingInvites, hostedEvents } = page;
+  const { company, myRole, members, pendingInvites, hostedEvents, joinRequests, pendingClaims } = page;
   const owner = myRole === "owner";
   const member = myRole !== null && isHost === true;
 
@@ -107,7 +107,9 @@ export default function CompanyScreen() {
         </Card>
         {myRole === "member" ? <Button testID="leave-company" label="Leave company" variant="ghost" loading={busy === "leave"} onPress={() => void leave()} /> : null}
 
+        {member && joinRequests?.length ? <JoinRequests companyId={company._id} requests={joinRequests} /> : null}
         {owner ? <Invites companyId={company._id} pending={pendingInvites ?? []} /> : null}
+        {member && pendingClaims?.length ? <PendingClaims claims={pendingClaims} /> : null}
 
         <SectionTitle>Hosted events</SectionTitle>
         {hostedEvents.length ? (
@@ -120,8 +122,8 @@ export default function CompanyScreen() {
                 </Pressable>
                 {member ? (
                   <View style={styles.actions}>
-                    {eventEnded(e) && company.verified ? (
-                      <Button testID={`talent-${e._id}`} label="See talent who went" variant="outline" style={styles.small} onPress={() => router.push({ pathname: "/company/[id]/talent/[eventId]", params: { id: company._id, eventId: e._id } })} />
+                    {company.verified ? (
+                      <Button testID={`matches-${e._id}`} label="Talent matches" variant="outline" style={styles.small} onPress={() => router.push({ pathname: "/company/[id]/matches/[eventId]", params: { id: company._id, eventId: e._id } })} />
                     ) : null}
                     {owner ? <Button testID={`unclaim-${e._id}`} label="Unclaim" variant="ghost" style={styles.small} loading={busy === e._id} onPress={() => deviceId && void run(e._id, () => unclaim({ deviceId, companyId: company._id, eventId: e._id }))} /> : null}
                   </View>
@@ -179,6 +181,55 @@ function Invites({ companyId, pending }: { companyId: Id<"companies">; pending: 
           </Card>
         </>
       ) : null}
+    </>
+  );
+}
+
+function JoinRequests({ companyId, requests }: { companyId: Id<"companies">; requests: { userId: Id<"users">; name: string | null; workEmail: string | null; createdAt: number }[] }) {
+  const deviceId = useDeviceId();
+  const respondJoin = useMutation(api.companies.respondJoin);
+  const { busy, error, run } = useRun();
+  return (
+    <>
+      <SectionTitle>Requests to join</SectionTitle>
+      <Card>
+        {requests.map((r, i) => (
+          <View key={r.userId} testID={`join-request-${i}`} style={[styles.row, i > 0 && styles.divider]}>
+            <Text style={styles.title}>{r.name ?? "Unnamed host"}</Text>
+            <Text style={styles.meta}>{r.workEmail ? `Work email ${r.workEmail}` : "Work email confirmed"} · {shortDate(r.createdAt)}</Text>
+            <View style={styles.actions}>
+              <Button testID={`approve-join-${i}`} label="Approve" style={styles.small} loading={busy === r.userId} onPress={() => deviceId && void run(r.userId, () => respondJoin({ deviceId, companyId, userId: r.userId, accept: true }))} />
+              <Button testID={`decline-join-${i}`} label="Decline" variant="ghost" style={styles.small} disabled={busy === r.userId} onPress={() => deviceId && void run(r.userId, () => respondJoin({ deviceId, companyId, userId: r.userId, accept: false }))} />
+            </View>
+          </View>
+        ))}
+      </Card>
+      {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+    </>
+  );
+}
+
+function PendingClaims({ claims }: { claims: { claimId: Id<"event_hosts">; event: EventSummary; requestedByName: string | null; createdAt: number; canReview: boolean }[] }) {
+  const deviceId = useDeviceId();
+  const review = useMutation(api.hosts.reviewClaim);
+  const { busy, error, run } = useRun();
+  return (
+    <>
+      <SectionTitle>Hosting claims to review</SectionTitle>
+      <Card>
+        {claims.map((c, i) => (
+          <View key={c.claimId} testID={`pending-claim-${i}`} style={[styles.row, i > 0 && styles.divider]}>
+            <Text style={styles.title}>{c.event.title}</Text>
+            <Text style={styles.meta}>{c.requestedByName ?? "A teammate"} says your company hosts this · {shortDate(c.event.startTime)}</Text>
+            {c.canReview ? <View style={styles.actions}>
+              <Button testID={`approve-claim-${i}`} label="Approve" style={styles.small} loading={busy === c.claimId} onPress={() => deviceId && void run(c.claimId, () => review({ deviceId, claimId: c.claimId, approve: true }))} />
+              <Button testID={`reject-claim-${i}`} label="Reject" variant="ghost" style={styles.small} disabled={busy === c.claimId} onPress={() => deviceId && void run(c.claimId, () => review({ deviceId, claimId: c.claimId, approve: false }))} />
+            </View> : <Text style={styles.meta}>Waiting for a teammate with a verified email at the company&apos;s domain</Text>}
+          </View>
+        ))}
+      </Card>
+      <Text style={[styles.meta, { marginTop: space.sm }]}>Only teammates with a verified email at the company&apos;s domain can approve, and not the person who made the claim</Text>
+      {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
     </>
   );
 }
