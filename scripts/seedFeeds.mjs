@@ -107,7 +107,7 @@ const feeds = entries
 console.log(`Seeding ${feeds.length} feeds from ${path} (${entries.length - feeds.length} skipped without source/url)`);
 console.log({ enabled: feeds.filter((f) => f.enabled !== false).length, adjusted: reasons });
 if (dryRun) {
-  console.log(feeds);
+  console.log(JSON.stringify(feeds, null, 2));
   process.exit(0);
 }
 const totals = { inserted: 0, updated: 0, unchanged: 0, disabled: 0 };
