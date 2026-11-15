@@ -4,14 +4,10 @@ import type { Id } from "./_generated/dataModel";
 import { internalMutation } from "./_generated/server";
 import { isFixtureUrl } from "./lib/fixtures";
 import { sourcesOf } from "./normalize/dedupe";
+import { deleteEventRefs } from "./normalize/reassignEventRefs";
 
 const BATCH = 100;
 
-/**
- * Deletes synthetic fixture events and the rows that point at them. Only runs when ENABLE_TEST_FIXTURES is "1".
- * Event deletions must go through the shared reassignEventRefs hook from cac#16 (or equivalent attendance
- * cleanup) once it exists, so attendance rows never outlive their event.
- */
 export const purgeSynthetic = internalMutation({
   args: {},
   returns: v.object({ events: v.number(), rawListings: v.number(), linkSubmissions: v.number(), saves: v.number(), more: v.boolean() }),
@@ -24,13 +20,8 @@ export const purgeSynthetic = internalMutation({
     const purged = new Set<Id<"events">>(events.map((e) => e._id));
     const counts = { events: 0, rawListings: 0, linkSubmissions: 0, saves: 0 };
     for (const event of events) {
-      // TODO: replace with the shared reassignEventRefs hook from cac#16 once it merges.
-      const saves = await ctx.db
-        .query("saves")
-        .withIndex("by_event", (q) => q.eq("eventId", event._id))
-        .collect();
-      for (const save of saves) await ctx.db.delete(save._id);
-      counts.saves += saves.length;
+      const removed = await deleteEventRefs(ctx, event._id);
+      counts.saves += removed.saves;
 
       const listingIds = new Set<Id<"raw_listings">>(event.rawListingId ? [event.rawListingId] : []);
       for (const { source, sourceId } of sourcesOf(event)) {

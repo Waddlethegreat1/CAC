@@ -74,6 +74,17 @@ describe("feed radius and card fields", () => {
     expect(feed!.events.find((e) => e.title === "Event nowhere")!.venue).toBeUndefined();
   });
 
+  test("returns stored coordinates for located events and omits them for unlocated ones", async () => {
+    const t = await setup();
+    const feed = await t.query(api.feed.ranked, { deviceId: user.deviceId });
+    const near = feed!.events.find((e) => e.title === "Event near")!;
+    expect(near.lat).toBe(37.7849);
+    expect(near.lng).toBe(-122.4094);
+    const nowhere = feed!.events.find((e) => e.title === "Event nowhere")!;
+    expect(nowhere).not.toHaveProperty("lat");
+    expect(nowhere).not.toHaveProperty("lng");
+  });
+
   test("users.upsert stores radiusKm, keeps it when omitted, and the feed uses it by default", async () => {
     const t = await setup();
     await t.mutation(api.users.upsert, { ...user, radiusKm: 10 });

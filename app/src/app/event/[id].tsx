@@ -7,6 +7,7 @@ import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, Share, Sty
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { EmptyState } from "@/components/feed/empty-state";
+import { AttendanceAggregate, GoingButton } from "@/components/attendance";
 import { Toast, useToast } from "@/components/feed/toast";
 import { AlertIcon, BackIcon, BookmarkIcon, CalendarIcon, ChartIcon, CheckIcon, LinkIcon, PeopleIcon, PinIcon, ShareIcon, SparkIcon } from "@/components/icons";
 import { colors, EVENT_TYPE_META, INVESTOR_SOME_MIN, layout, radius, shadow, type } from "@/constants/theme";
@@ -189,6 +190,7 @@ export default function EventDetail() {
           </Pressable>
         </View>
 
+        <View style={{ marginHorizontal: layout.screenPadding, marginTop: 12 }}><GoingButton event={event} /></View>
         <View testID="investor-signal" accessibilityLabel="Investor signal" style={[styles.signal, tier === "low" && styles.signalLow]}>
           <View style={styles.signalHead}>
             <Text style={styles.signalTitle}>{tier === "high" ? "Investors likely" : tier === "mid" ? "Some investors" : "Few investors expected"}</Text>
@@ -208,6 +210,7 @@ export default function EventDetail() {
             <Text style={[styles.reasonText, { color: colors.muted }]}>No investor signals in this listing yet</Text>
           )}
           <Text style={styles.note}>Inferred from the listing: format, judges, sponsors, and host. Not confirmed by the organizer</Text>
+          <AttendanceAggregate eventId={event._id} />
         </View>
 
         {event.description ? (

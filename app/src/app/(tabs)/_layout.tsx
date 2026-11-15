@@ -30,6 +30,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="feed" options={{ title: "Feed", tabBarButtonTestID: "tab-feed", tabBarIcon: tabIcon("home") }} />
+      <Tabs.Screen name="map" options={{ title: "Map", tabBarButtonTestID: "tab-map", tabBarIcon: tabIcon("map-pin") }} />
       <Tabs.Screen name="saved" options={{ title: "Saved", tabBarButtonTestID: "tab-saved", tabBarIcon: tabIcon("bookmark") }} />
       <Tabs.Screen
         name="investor/index"

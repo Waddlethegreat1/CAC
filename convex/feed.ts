@@ -57,6 +57,8 @@ export const ranked = query({
         endTime: event.endTime,
         city: event.city,
         venue: event.venue,
+        lat: event.lat,
+        lng: event.lng,
         isOnline: event.isOnline,
         imageUrl: event.imageUrl,
         organizer: event.organizer,

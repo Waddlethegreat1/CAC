@@ -5,6 +5,7 @@ import { Pressable, RefreshControl, ScrollView, SectionList, StyleSheet, Text, V
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Chip } from "@/components/chip";
+import { AttendancePrompt } from "@/components/attendance";
 import { EventCard } from "@/components/event-card";
 import { EmptyState } from "@/components/feed/empty-state";
 import { Segmented } from "@/components/segmented";
@@ -126,6 +127,7 @@ export default function Feed() {
           {events.length} events · ranked by interest, date, and distance
         </Text>
       ) : null}
+      <AttendancePrompt />
     </View>
   );
 

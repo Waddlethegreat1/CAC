@@ -9,6 +9,7 @@
  */
 
 import type * as adapters_devpost from "../adapters/devpost.js";
+import type * as adapters_eventbrite from "../adapters/eventbrite.js";
 import type * as adapters_fixture from "../adapters/fixture.js";
 import type * as adapters_ical from "../adapters/ical.js";
 import type * as adapters_index from "../adapters/index.js";
@@ -23,6 +24,9 @@ import type * as adapters_llm_validate from "../adapters/llm/validate.js";
 import type * as adapters_llmExtract from "../adapters/llmExtract.js";
 import type * as adapters_luma from "../adapters/luma.js";
 import type * as adapters_mlh from "../adapters/mlh.js";
+import type * as attendance from "../attendance.js";
+import type * as attendanceModel from "../attendanceModel.js";
+import type * as attendanceSeed from "../attendanceSeed.js";
 import type * as crons from "../crons.js";
 import type * as events from "../events.js";
 import type * as feed from "../feed.js";
@@ -50,6 +54,7 @@ import type * as normalize_dedupe from "../normalize/dedupe.js";
 import type * as normalize_embed from "../normalize/embed.js";
 import type * as normalize_geocode from "../normalize/geocode.js";
 import type * as normalize_index from "../normalize/index.js";
+import type * as normalize_reassignEventRefs from "../normalize/reassignEventRefs.js";
 import type * as qa from "../qa.js";
 import type * as saves from "../saves.js";
 import type * as seed from "../seed.js";
@@ -63,6 +68,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "adapters/devpost": typeof adapters_devpost;
+  "adapters/eventbrite": typeof adapters_eventbrite;
   "adapters/fixture": typeof adapters_fixture;
   "adapters/ical": typeof adapters_ical;
   "adapters/index": typeof adapters_index;
@@ -77,6 +83,9 @@ declare const fullApi: ApiFromModules<{
   "adapters/llmExtract": typeof adapters_llmExtract;
   "adapters/luma": typeof adapters_luma;
   "adapters/mlh": typeof adapters_mlh;
+  attendance: typeof attendance;
+  attendanceModel: typeof attendanceModel;
+  attendanceSeed: typeof attendanceSeed;
   crons: typeof crons;
   events: typeof events;
   feed: typeof feed;
@@ -104,6 +113,7 @@ declare const fullApi: ApiFromModules<{
   "normalize/embed": typeof normalize_embed;
   "normalize/geocode": typeof normalize_geocode;
   "normalize/index": typeof normalize_index;
+  "normalize/reassignEventRefs": typeof normalize_reassignEventRefs;
   qa: typeof qa;
   saves: typeof saves;
   seed: typeof seed;

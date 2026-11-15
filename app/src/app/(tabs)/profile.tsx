@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "@/components/button";
+import { AttendanceHistory } from "@/components/attendance";
 import { Icon } from "@/components/icon";
 import { Segmented } from "@/components/segmented";
 import { SelectChip } from "@/components/select-chip";
@@ -215,6 +216,7 @@ function ProfileForm({ user }: { user: User }) {
         </View>
       </View>
 
+      <AttendanceHistory />
       <Text style={styles.group}>Missing an event</Text>
       <View style={styles.card}>
         <Pressable testID="profile-add-event" accessibilityRole="button" onPress={() => router.push("/submit")} style={styles.prow}>
