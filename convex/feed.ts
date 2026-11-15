@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
-import { rankEvents } from "./lib/ranking";
+import { INVESTORS_LIKELY_MIN, rankEvents } from "./lib/ranking";
 
 const DAY = 86_400_000;
 export const DEFAULT_DURATION = 3 * 3600_000;
@@ -15,8 +15,8 @@ export const feedFilter = v.union(
 );
 
 export const ranked = query({
-  args: { deviceId: v.string(), filter: v.optional(feedFilter) },
-  handler: async (ctx, { deviceId, filter = "all" }) => {
+  args: { deviceId: v.string(), filter: v.optional(feedFilter), radiusKm: v.optional(v.number()) },
+  handler: async (ctx, { deviceId, filter = "all", radiusKm }) => {
     const user = await ctx.db
       .query("users")
       .withIndex("by_device", (q) => q.eq("deviceId", deviceId))
@@ -31,7 +31,7 @@ export const ranked = query({
     const filtered = live.filter((e) => {
       switch (filter) {
         case "investors":
-          return e.investorScore >= 60;
+          return e.investorScore >= INVESTORS_LIKELY_MIN;
         case "hackathons":
           return e.eventType === "hackathon";
         case "pitch":
@@ -44,7 +44,10 @@ export const ranked = query({
           return true;
       }
     });
-    const ranked = rankEvents(filtered, { ...user, now }).slice(0, 60);
+    const radius = radiusKm ?? user.radiusKm;
+    const ranked = rankEvents(filtered, { ...user, now })
+      .filter(({ event, distanceKm }) => radius === undefined || event.isOnline || distanceKm === null || distanceKm <= radius)
+      .slice(0, 60);
     return {
       city: user.city,
       events: ranked.map(({ event, score, distanceKm, matched }) => ({
@@ -53,11 +56,15 @@ export const ranked = query({
         startTime: event.startTime,
         endTime: event.endTime,
         city: event.city,
+        venue: event.venue,
         isOnline: event.isOnline,
         imageUrl: event.imageUrl,
         organizer: event.organizer,
         eventType: event.eventType,
         investorScore: event.investorScore,
+        tags: event.tags,
+        audience: event.audience,
+        source: event.source,
         score,
         distanceKm,
         matched,
