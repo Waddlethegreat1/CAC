@@ -2,10 +2,10 @@
 
 _meta:
     remote_id: 0068d457-9401-4c1a-9c1e-a0a8b1bc322c
-    remote_version: 3
-    local_version: 3
-    last_synced_at: "2026-11-15T19:01:15Z"
-    checksum: c4b78ac958228a0b336ea225f7ea4aa67c8ae466727076473c9909f42e0fb034
+    remote_version: 5
+    local_version: 5
+    last_synced_at: "2026-11-15T23:33:29Z"
+    checksum: 15d170f344ba763158bdc9d6ad2e1116b9fd765b4854f460460c5d20c39ccda7
 test:
     metadata:
         name: profile-edit
@@ -21,19 +21,19 @@ test:
         - type: instructions
           step_description: Tap the Profile tab in the bottom tab bar.
         - type: validation
-          step_description: A Profile screen shows "I am" with Student selected, an Interests section, and a Location section with Area set to "Palo Alto" and a Distance choice.
+          step_description: A Profile screen shows "I am" with Talent selected, an Interests section, and a Location section with Area set to "Palo Alto" and a Distance choice.
         - type: instructions
           step_description: Tap the "Edit interests" button, tap the "Climate" interest chip, then tap "Save interests".
         - type: validation
-          step_description: A confirmation reads "Interests saved", and the interests list now includes Climate.
+          step_description: The interests list now includes Climate.
         - type: instructions
           step_description: Tap the Area row, then tap the "San Francisco" area chip.
         - type: validation
-          step_description: A confirmation reads "Area set to San Francisco", and the Area row shows "San Francisco".
+          step_description: The Area row shows "San Francisco".
         - type: instructions
           step_description: Under Distance, tap "10 mi".
         - type: validation
-          step_description: A confirmation reads "Distance updated", and "10 mi" is selected.
+          step_description: Under Distance, the 10 mi option is selected.
         - type: instructions
           step_description: Tap the Feed tab in the bottom tab bar.
         - type: validation

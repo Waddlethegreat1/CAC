@@ -101,7 +101,7 @@ Revyl config lives in `app/.revyl/config.yaml`, with the iOS app `Scout iOS` lin
 | `investor-onboarding-home` | Investor onboarding, the Scouting tab, investor event detail |
 | `paste-a-link` | Add an event by link: validation errors, then the dev fixture `https://nautical-sheep-358.convex.site/fixtures/scout-test-event` (needs `ENABLE_TEST_FIXTURES=1` on the deployment) |
 
-Most tests start with the shared `onboard-student` module (`app/.revyl/modules/`), which onboards a fresh install as a student in Palo Alto.
+Most tests start with the shared `onboard-student` module (`app/.revyl/modules/`). It taps Get started on the welcome screen, picks Talent, signs up on About you, and lands on the feed near Palo Alto. Sign-up needs a new email on every fresh install, so the `e2e-email` script (`app/.revyl/scripts/e2e-email.sh`) mints `scout-e2e+<time><random>@example.com` into the `{{email}}` variable at the start of each run. These test accounts live on the dev deployment only.
 
 ```bash
 curl -fsSL https://revyl.com/install.sh | sh   # then: export PATH=$HOME/.revyl/bin:$PATH
