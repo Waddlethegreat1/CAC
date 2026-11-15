@@ -16,8 +16,11 @@
     "llm:accuracy": "tsx scripts/llm-accuracy.mts"
   },
   "dependencies": {
+    "@auth/core": "0.41.3",
+    "@convex-dev/auth": "^0.0.98",
     "convex": "^1.50.0",
     "ical.js": "^2.2.1",
+    "lucia": "3.2.2",
     "node-html-parser": "^9.0.7"
   },
   "devDependencies": {

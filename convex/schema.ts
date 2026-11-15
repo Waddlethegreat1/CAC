@@ -1,3 +1,4 @@
+import { authTables } from "@convex-dev/auth/server";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { rawEvent } from "./lib/rawEvent";
@@ -62,6 +63,8 @@ export const eventPlace = v.object({
 });
 
 export const eventSource = v.object({ url: v.string(), source: v.string(), sourceId: v.string() });
+
+const { users: _authUsers, ...authOnlyTables } = authTables;
 
 export default defineSchema({
   feeds: defineTable({
@@ -165,7 +168,12 @@ export default defineSchema({
     phone: v.optional(v.string()),
     affiliation: v.optional(v.string()),
     linkedin: v.optional(v.string()),
-  }).index("by_device", ["deviceId"]),
+    emailVerificationTime: v.optional(v.number()),
+    phoneVerificationTime: v.optional(v.number()),
+  })
+    .index("by_device", ["deviceId"])
+    .index("email", ["email"])
+    .index("phone", ["phone"]),
 
   interests: defineTable({
     slug: v.string(),
@@ -219,4 +227,6 @@ export default defineSchema({
     ratingSum: v.number(),
     investorConfirmations: v.number(),
   }).index("by_event", ["eventId"]),
+
+  ...authOnlyTables,
 });
