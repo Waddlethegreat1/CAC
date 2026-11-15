@@ -1,4 +1,10 @@
+import type { RawLocation } from "./rawEvent";
+
 export type City = { name: string; lat: number; lng: number };
+
+export type GeoHit = { lat: number; lng: number; city?: string };
+
+export type Geocoder = (query: string) => Promise<GeoHit | null>;
 
 export const BAY_AREA_CITIES: City[] = [
   { name: "San Francisco", lat: 37.7749, lng: -122.4194 },
@@ -45,4 +51,20 @@ export function lookupCity(text: string): City | undefined {
 
 export function nearestCity(p: { lat: number; lng: number }): City {
   return BAY_AREA_CITIES.reduce((best, c) => (distanceKm(p, c) < distanceKm(p, best) ? c : best));
+}
+
+
+export function foldText(text: string): string {
+  return text
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+export function geocodeQuery(loc: RawLocation): string {
+  const head = loc.address ?? loc.name;
+  const rest = [loc.city, loc.region, loc.country].filter((p): p is string => !!p && !foldText(head ?? "").includes(foldText(p)));
+  return [head, ...rest].filter(Boolean).join(", ");
 }

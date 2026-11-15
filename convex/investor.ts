@@ -40,7 +40,7 @@ export const ranked = query({
           .withIndex("by_start", (q) => q.gte("startTime", from).lte("startTime", to))
           .take(CANDIDATES);
     const events = candidates
-      .filter((e) => isLive(e, now) && (args.eventType === undefined || e.eventType === args.eventType))
+      .filter((e) => !e.synthetic && isLive(e, now) && (args.eventType === undefined || e.eventType === args.eventType))
       .map((e): InvestorEvent => ({ ...e, ...scout(e, now) }))
       .filter((e) => e.studentDensity >= STUDENT_DENSITY_MIN)
       .sort((a, b) => b.scoutScore - a.scoutScore || a.startTime - b.startTime)
