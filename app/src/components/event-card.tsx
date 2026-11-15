@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { InvestorBadge } from "@/components/investor-badge";
+import { GoingButton } from "@/components/attendance";
 import { colors, EVENT_TYPE_META, layout, radius, shadow, type } from "@/constants/theme";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { INTERESTS } from "@/convex/lib/interests";
@@ -64,6 +65,7 @@ export function EventCard({ event, accessory, dimmed }: Props) {
         </View>
       </Pressable>
       {accessory ? <View style={styles.accessory}>{accessory}</View> : null}
+      <GoingButton event={event} />
     </View>
   );
 }

@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Icon } from "@/components/icon";
+import { AttendanceAggregate, GoingButton } from "@/components/attendance";
 import { investorTier } from "@/components/investor-badge";
 import { SignalPanel } from "@/components/investor/signal-panel";
 import { colors, EVENT_TYPE_META, layout, radius, shadow, type } from "@/constants/theme";
@@ -96,6 +97,8 @@ export default function InvestorEventDetail() {
 
         <View style={styles.section}>
           <SignalPanel score={event.investorScore} reasons={event.investorSignals} />
+          <AttendanceAggregate eventId={event._id} />
+          <GoingButton event={event} />
         </View>
 
         <View testID="student-turnout" style={[styles.section, styles.turnout]}>
