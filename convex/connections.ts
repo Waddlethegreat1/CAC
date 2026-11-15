@@ -2,10 +2,10 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { ended } from "./attendanceModel";
-import { callerFor, requireCaller } from "./lib/identity";
+import { callerFor, isVerifiedHost, requireCaller, requireHost } from "./lib/identity";
 import {
   blockedUntil, COMPANY_DAILY_LIMIT, companyRole, companyView, connectionSide, connectionStatus, DAY, eventSummary, fail,
-  hosts, isLive, isMember, MAX_DISCOVER_EVENTS, MAX_EVENT_TALENT, MAX_INBOX, MAX_MEMBERSHIPS, MAX_MESSAGE, MAX_ROWS, cleanText, nullableStatus, pairRows, requireEligible, requireMember, requireVerified, sharedContact,
+  hosts, isLive, isMember, MAX_DISCOVER_EVENTS, MAX_EVENT_TALENT, MAX_INBOX, MAX_MEMBERSHIPS, MAX_MESSAGE, MAX_ROWS, cleanText, nullableStatus, pairRows, requireEligible, requireMember, requireVerified, isApproved, profileView, toProfile, sharedContact,
   sideOf, TALENT_DAILY_LIMIT, talentView, toCompany, toContact, toEvent, toTalent, wentTo, type Side,
 } from "./lib/connections";
 import { nextMessageTime } from "./chat";
@@ -77,7 +77,7 @@ export const expressInterestInTalent = mutation({
   returns: initiateResult,
   handler: async (ctx, { deviceId, companyId, talentUserId, eventId, message }) => {
     const user = await requireCaller(ctx, deviceId);
-    await requireMember(ctx, companyId, user._id);
+    await requireMember(ctx, companyId, user);
     await requireVerified(ctx, companyId);
     const talent = await ctx.db.get(talentUserId);
     if (!talent) return fail("not_found", "Talent not found");
@@ -91,6 +91,7 @@ async function loadForCaller(ctx: QueryCtx, deviceId: string, connectionId: Id<"
   const connection = await ctx.db.get(connectionId);
   const side = connection ? await sideOf(ctx, connection, user._id) : null;
   if (!connection || !side) return fail("not_found", "Connection not found");
+  if (side === "company") requireHost(user);
   return { user, connection, side };
 }
 
@@ -163,7 +164,7 @@ export const inbox = query({
       if (company) place(talent, c, "talent", { ...await commonView(ctx, c), shareContact: c.shareContact, company: toCompany(company) });
     }
 
-    const memberships = await ctx.db.query("company_members").withIndex("by_user", (q) => q.eq("userId", user._id)).take(MAX_MEMBERSHIPS);
+    const memberships = isVerifiedHost(user) ? await ctx.db.query("company_members").withIndex("by_user", (q) => q.eq("userId", user._id)).take(MAX_MEMBERSHIPS) : [];
     const companies = [];
     for (const m of memberships) {
       const company = await ctx.db.get(m.companyId);
@@ -199,7 +200,7 @@ export const discover = query({
     for (const record of records) {
       const event = await ctx.db.get(record.eventId);
       if (!event || !ended(event, now) || !wentTo(record, event)) continue;
-      const links = await ctx.db.query("event_hosts").withIndex("by_event", (q) => q.eq("eventId", event._id)).take(MAX_ROWS);
+      const links = (await ctx.db.query("event_hosts").withIndex("by_event", (q) => q.eq("eventId", event._id)).take(MAX_ROWS)).filter(isApproved);
       const companies = [];
       for (const link of links) {
         const company = await ctx.db.get(link.companyId);
@@ -219,7 +220,7 @@ export const eventTalent = query({
   returns: v.array(v.object({ talent: talentView, connectionStatus: nullableStatus, blockedUntil: v.union(v.number(), v.null()) })),
   handler: async (ctx, { deviceId, companyId, eventId }) => {
     const user = await requireCaller(ctx, deviceId);
-    await requireMember(ctx, companyId, user._id);
+    await requireMember(ctx, companyId, user);
     await requireVerified(ctx, companyId);
     const event = await ctx.db.get(eventId);
     const now = Date.now();
@@ -240,25 +241,15 @@ export const eventTalent = query({
 
 export const talentProfile = query({
   args: { deviceId: v.string(), companyId: v.id("companies"), talentUserId: v.id("users") },
-  returns: v.object({
-    talent: v.object({
-      ...talentView.fields,
-      affiliation: v.union(v.string(), v.null()),
-      priorRoles: v.union(v.string(), v.null()),
-      experience: v.union(v.string(), v.null()),
-    }),
-    sharedEvents: v.array(eventSummary),
-    connection: v.union(v.null(), v.object({ _id: v.id("connections"), status: connectionStatus, initiatedBy: connectionSide, shareContact: v.boolean() })),
-    contact: v.union(sharedContact, v.null()),
-  }),
+  returns: v.object({ ...profileView.fields, sharedEvents: v.array(eventSummary) }),
   handler: async (ctx, { deviceId, companyId, talentUserId }) => {
     const user = await requireCaller(ctx, deviceId);
-    await requireMember(ctx, companyId, user._id);
+    await requireMember(ctx, companyId, user);
     await requireVerified(ctx, companyId);
     const talent = await ctx.db.get(talentUserId);
     if (!talent || talent.role !== "student" || await isMember(ctx, companyId, talentUserId)) return fail("not_found", "Talent not found");
     const now = Date.now();
-    const links = await ctx.db.query("event_hosts").withIndex("by_company", (q) => q.eq("companyId", companyId)).take(MAX_ROWS);
+    const links = (await ctx.db.query("event_hosts").withIndex("by_company", (q) => q.eq("companyId", companyId)).take(MAX_ROWS)).filter(isApproved);
     const sharedEvents = [];
     for (const link of links) {
       const event = await ctx.db.get(link.eventId);
@@ -268,11 +259,6 @@ export const talentProfile = query({
     }
     const live = (await pairRows(ctx, talentUserId, companyId)).find(isLive) ?? null;
     if (!sharedEvents.length && !live) return fail("not_found", "Talent not found");
-    return {
-      talent: { ...toTalent(talent), affiliation: talent.affiliation ?? null, priorRoles: talent.priorRoles ?? null, experience: talent.experience ?? null },
-      sharedEvents: sharedEvents.sort((a, b) => b.startTime - a.startTime).map(toEvent),
-      connection: live ? { _id: live._id, status: live.status, initiatedBy: live.initiatedBy, shareContact: live.shareContact } : null,
-      contact: live?.status === "accepted" && live.shareContact ? toContact(talent) : null,
-    };
+    return { ...toProfile(talent, live), sharedEvents: sharedEvents.sort((a, b) => b.startTime - a.startTime).map(toEvent) };
   },
 });

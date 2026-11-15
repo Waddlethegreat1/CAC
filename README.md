@@ -40,6 +40,17 @@ pnpm install
 | `EXPO_PUBLIC_CONVEX_URL` | `app/.env.local` | Convex client URL the app connects to (`https://<name>.convex.cloud`, or `http://127.0.0.1:3210` locally) |
 | `REVYL_API_KEY` | shell / CI secret | Revyl CLI auth for builds and test runs (or `revyl auth login`) |
 
+Host work-email verification (`hosts.startVerification`) needs one of these on the Convex deployment (`npx convex env set`):
+
+| Variable | Purpose |
+| - | - |
+| `RESEND_API_KEY` + `EMAIL_FROM` | Send verification codes through Resend. Takes priority when both are set. |
+| `EMAIL_DEV_MODE=1` | Dev shell: sends nothing and returns the code to the app as `devCode` (also logged). |
+
+> **Never set `EMAIL_DEV_MODE` on production.** A dev-verified host proves nothing about owning the address: anyone can verify any work email. Hosts verified this way are marked `workEmailVerifiedVia: "dev"` and `hosts.status` reports `verificationMode: "dev"`. With neither option set, verification throws `email_not_configured`.
+
+Admin approvals run through the CLI with a deploy key: `pnpm verify:company <slug> [--by <name>] [--unverify]` for companies without a work domain, such as `.edu` clubs, and `pnpm approve:claim <claimId>` for pending event-hosting claims.
+
 No source needs an API key today: Devpost's public hackathon JSON and Luma's public pages are read without auth.
 
 ## Run the backend
