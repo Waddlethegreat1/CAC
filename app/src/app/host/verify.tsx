@@ -84,7 +84,7 @@ export default function HostVerifyScreen() {
         ) : (
           <>
             <Text style={[styles.body, { marginTop: space.md }]}>
-              {awaiting.verificationMode === "dev" ? "Dev verification: no email was sent." : awaiting.verificationMode === "email" ? `We sent a 6-digit code to ${awaiting.sentTo}.` : `A code is waiting for ${awaiting.sentTo}.`} It expires at {new Date(awaiting.expiresAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}.
+              {awaiting.verificationMode === "dev" ? "Dev verification: no email was sent." : awaiting.verificationMode === "email" ? `We sent a 6-digit code to ${awaiting.sentTo}.` : `A code is waiting for ${awaiting.sentTo}. On a dev deployment no email is sent, so resend to see a new code.`} It expires at {new Date(awaiting.expiresAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}.
             </Text>
             {awaiting.verificationMode === "dev" ? <DevNote code={sent?.devCode} /> : null}
             <Card style={{ padding: 14, marginTop: space.lg, gap: space.sm }}>
@@ -118,7 +118,7 @@ function DevNote({ code }: { code?: string }) {
     <View testID="dev-verification" style={[styles.notice, styles.pending]}>
       <Text style={styles.noticeTitle}>Dev verification</Text>
       <Text style={styles.noticeBody}>
-        This deployment runs in email dev mode, so no email is sent and the code is shown here{code ? " and filled in for you" : ""}. Dev-verified hosts are marked as such.
+        This deployment runs in email dev mode, so no email is sent and the code is shown here{code ? " and filled in for you" : ""}.
       </Text>
       {code ? <Text testID="dev-code" style={{ ...type.screenTitle, color: colors.ink, letterSpacing: 6 }}>{code}</Text> : null}
     </View>

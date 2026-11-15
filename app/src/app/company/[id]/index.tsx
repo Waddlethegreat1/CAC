@@ -196,7 +196,7 @@ function JoinRequests({ companyId, requests }: { companyId: Id<"companies">; req
         {requests.map((r, i) => (
           <View key={r.userId} testID={`join-request-${i}`} style={[styles.row, i > 0 && styles.divider]}>
             <Text style={styles.title}>{r.name ?? "Unnamed host"}</Text>
-            <Text style={styles.meta}>{r.workEmail ? `Verified ${r.workEmail}` : "Verified work email"} · {shortDate(r.createdAt)}</Text>
+            <Text style={styles.meta}>{r.workEmail ? `Work email ${r.workEmail}` : "Work email confirmed"} · {shortDate(r.createdAt)}</Text>
             <View style={styles.actions}>
               <Button testID={`approve-join-${i}`} label="Approve" style={styles.small} loading={busy === r.userId} onPress={() => deviceId && void run(r.userId, () => respondJoin({ deviceId, companyId, userId: r.userId, accept: true }))} />
               <Button testID={`decline-join-${i}`} label="Decline" variant="ghost" style={styles.small} disabled={busy === r.userId} onPress={() => deviceId && void run(r.userId, () => respondJoin({ deviceId, companyId, userId: r.userId, accept: false }))} />

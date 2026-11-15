@@ -21,13 +21,13 @@ export function contactErrorOf(e: unknown): Partial<Contact> | null {
   return field && message ? { [field]: message } : null;
 }
 
-export const affiliationLabel = (role: Role | null) => (role === "investor" ? "Firm or company" : "School or organization");
+export const affiliationLabel = (role: Role | null) => (role === "investor" ? "Firm or company" : role === "host" ? "Company or organization" : "School or organization");
 
 type FieldSpec = { field: ContactField; label: string; placeholder: string; optional?: boolean; input: TextInputProps };
 
 const fields = (role: Role | null): FieldSpec[] => [
   { field: "name", label: "Full name", placeholder: "Ada Lovelace", input: { autoCapitalize: "words", autoComplete: "name", textContentType: "name" } },
-  { field: "email", label: "Email", placeholder: role === "investor" ? "you@firm.com" : "you@school.edu", input: { autoCapitalize: "none", autoComplete: "email", keyboardType: "email-address", textContentType: "emailAddress" } },
+  { field: "email", label: "Email", placeholder: role === "investor" ? "you@firm.com" : role === "host" ? "you@company.com" : "you@school.edu", input: { autoCapitalize: "none", autoComplete: "email", keyboardType: "email-address", textContentType: "emailAddress" } },
   { field: "phone", label: "Phone number", placeholder: "+1 415 555 0100", optional: true, input: { autoComplete: "tel", keyboardType: "phone-pad", textContentType: "telephoneNumber" } },
   { field: "affiliation", label: affiliationLabel(role), placeholder: role === "investor" ? "Firm or company name" : "Stanford, Cal, a club", optional: true, input: { autoCapitalize: "words", textContentType: "organizationName" } },
   { field: "linkedin", label: "LinkedIn", placeholder: "linkedin.com/in/you", optional: true, input: { autoCapitalize: "none", keyboardType: "url", textContentType: "URL" } },

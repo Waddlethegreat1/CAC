@@ -159,11 +159,12 @@ function ProfileForm({ user }: { user: User }) {
         options={[
           { value: "student" as Role, label: "Talent", testID: "profile-role-student" },
           { value: "investor" as Role, label: "Looking for Talent", testID: "profile-role-investor" },
+          { value: "host" as Role, label: "Host", testID: "profile-role-host" },
         ]}
         value={user.role}
         onChange={(role) => {
           if (role !== user.role)
-            void save({ role }, role === "investor" ? "Looking for Talent on. Your feed now scouts student events" : "Talent mode on");
+            void save({ role }, role === "investor" ? "Looking for Talent on. Your feed now scouts student events" : role === "host" ? "Host mode on. Verify a work email from Inbox to use company features" : "Talent mode on");
         }}
       />
 

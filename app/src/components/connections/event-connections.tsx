@@ -120,7 +120,7 @@ function HostingSlot({ eventId, ended }: { eventId: Id<"events">; ended: boolean
           {!ended ? <Text style={styles.meta}>Talent who went show up here once the event ends</Text> : null}
         </Card>
       ) : status.claim?.status === "pending" ? (
-        <Notice testID="hosting-pending" tone="pending" title="Hosting claim pending" body={`This listing doesn't name ${claimed?.name ?? "your company"} or link to its website, so another verified teammate or Scout needs to approve it`} />
+        <Notice testID="hosting-pending" tone="pending" title="Hosting claim pending" body={`This listing doesn't name ${claimed?.name ?? "your company"} or link to your company's domain, so another verified teammate or Scout needs to approve it`} />
       ) : null}
       {status.canClaim && status.claim?.status !== "approved" ? (
         verified.filter((m) => m.company._id !== status.claim?.companyId).map((m) => (

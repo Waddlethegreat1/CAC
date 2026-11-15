@@ -26,7 +26,7 @@ export default function CompaniesScreen() {
       <ScreenHeader title="Companies" />
       {isHost === false ? (
         <View style={styles.content}>
-          <Notice testID="host-required" title="For verified hosts" body="Company features are for hosts with a verified work email. Choose I'm a host in Profile or onboarding, then verify your work email" />
+          <Notice testID="host-required" title="For verified hosts" body="Company features are for hosts with a verified work email. Switch to Host in Profile, then verify your work email" />
           {status?.role === "host" ? <Button testID="verify-work-email" label="Verify work email" style={{ marginTop: space.md }} onPress={() => router.push("/host/verify")} /> : null}
         </View>
       ) : mine === undefined ? (
