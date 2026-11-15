@@ -1,3 +1,4 @@
+import { useAuthActions, useConvexAuth } from "@convex-dev/auth/react";
 import { useMutation, useQuery } from "convex/react";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -14,7 +15,7 @@ import { colors, layout, radius, shadow, space, type } from "@/constants/theme";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { checkContact, type Contact } from "@/convex/lib/contact";
-import { DEFAULT_RADIUS_KM, RADIUS_OPTIONS, useDeviceId } from "@/lib/device";
+import { DEFAULT_RADIUS_KM, RADIUS_OPTIONS, useDevice, useDeviceId } from "@/lib/device";
 import { AREAS, cityPlace, locateDevice, type Place, type Role } from "@/lib/profile";
 
 type User = Doc<"users">;
@@ -47,6 +48,10 @@ function ProfileForm({ user }: { user: User }) {
   const upsert = useMutation(api.users.upsert);
   const [editingInterests, setEditingInterests] = useState(false);
   const [draft, setDraft] = useState<string[]>(user.interests);
+  const { isAuthenticated } = useConvexAuth();
+  const { signOut } = useAuthActions();
+  const { reset } = useDevice();
+  const [signingOut, setSigningOut] = useState(false);
   const [editingDetails, setEditingDetails] = useState(false);
   const [details, setDetails] = useState<Contact>(contactOf(user));
   const [detailErrors, setDetailErrors] = useState<Partial<Contact>>({});
@@ -112,6 +117,18 @@ function ProfileForm({ user }: { user: User }) {
     { label: affiliationLabel(user.role), value: user.affiliation },
     { label: "LinkedIn", value: user.linkedin?.replace(/^https:\/\/www\./, "") },
   ];
+
+  const signOutHere = async () => {
+    setSigningOut(true);
+    try {
+      await signOut();
+      await reset();
+      router.replace("/onboarding");
+    } catch {
+      setError("Couldn't sign out: no connection. Try again");
+      setSigningOut(false);
+    }
+  };
 
   const useMyLocation = async () => {
     setLocating(true);
@@ -316,6 +333,21 @@ function ProfileForm({ user }: { user: User }) {
         </View>
       ) : null}
 
+      <Text style={styles.group}>Account</Text>
+      <View style={[styles.card, styles.accountCard]} testID="profile-account">
+        <Text style={styles.body}>{isAuthenticated ? `Signed in as ${user.email ?? "your account"}` : "No account on this device"}</Text>
+        <Text style={styles.accountHint}>
+          {isAuthenticated
+            ? "Signing out removes your profile from this device. Sign back in with your email and password to restore it"
+            : "Start onboarding over to set a password, or sign in to an account you already have"}
+        </Text>
+        {isAuthenticated ? (
+          <Button testID="sign-out" variant="outline" label="Sign out" loading={signingOut} onPress={signOutHere} />
+        ) : (
+          <Button testID="profile-sign-in" variant="outline" label="Sign in to an existing account" onPress={() => router.push("/sign-in")} />
+        )}
+      </View>
+
       <Button testID="restart-onboarding" variant="ghost" label="Start onboarding over" onPress={() => router.push("/onboarding")} />
     </ScrollView>
   );
@@ -340,6 +372,8 @@ const styles = StyleSheet.create({
   detailValue: { flexShrink: 1, maxWidth: "65%", textAlign: "right" },
   empty: { color: colors.subtle },
   privacy: { ...type.meta, color: colors.subtle, marginTop: space.sm },
+  accountCard: { padding: layout.cardPadding, gap: space.sm, marginBottom: space.md },
+  accountHint: { ...type.meta, color: colors.muted },
   error: { ...type.meta, color: colors.danger, minHeight: 18, marginTop: space.md },
   notice: { flexDirection: "row", alignItems: "center", gap: space.sm, marginBottom: space.sm },
   noticeText: { ...type.meta, color: colors.ink },

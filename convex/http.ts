@@ -1,8 +1,11 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
+import { auth } from "./auth";
 import { SCOUT_TEST_EVENT_PATH, scoutTestEventHtml } from "./lib/fixtures";
 
 const http = httpRouter();
+
+auth.addHttpRoutes(http);
 
 http.route({
   path: SCOUT_TEST_EVENT_PATH,
