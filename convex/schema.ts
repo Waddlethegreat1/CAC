@@ -297,5 +297,6 @@ export default defineSchema({
     body: v.string(),
     createdAt: v.number(),
   }).index("by_connection", ["connectionId", "createdAt"]),
+
   ...authOnlyTables,
 });
