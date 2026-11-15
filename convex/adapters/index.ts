@@ -45,6 +45,7 @@ export const DEFAULT_FEEDS: { source: string; name: string; url: string; interva
     name: "Devpost online hackathons",
     url: "https://devpost.com/api/hackathons?status[]=upcoming&status[]=open&challenge_type[]=online",
     intervalMinutes: 720,
+    tier: "feed",
   },
   { source: "mlh", name: "MLH 2027 season", url: "https://www.mlh.com/seasons/2027/events", intervalMinutes: 720, enabled: false },
   { source: "luma", name: "Luma San Francisco", url: "https://luma.com/sf", intervalMinutes: 180, enabled: false },
