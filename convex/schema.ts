@@ -109,6 +109,7 @@ export default defineSchema({
     studentDensity: v.optional(v.number()),
     dedupeKey: v.optional(v.string()),
     sources: v.optional(v.array(eventSource)),
+    synthetic: v.optional(v.boolean()),
   })
     .index("by_start", ["startTime"])
     .index("by_dedupeKey", ["dedupeKey"])
