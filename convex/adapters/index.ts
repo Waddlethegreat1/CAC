@@ -3,6 +3,7 @@ import { devpostAdapter } from "./devpost";
 import { fixtureAdapter } from "./fixture";
 import { icalAdapter } from "./ical";
 import { jsonldAdapter } from "./jsonld";
+import { llmExtractAdapter } from "./llm/adapter";
 import { lumaAdapter } from "./luma";
 import { mlhAdapter } from "./mlh";
 
@@ -13,10 +14,12 @@ export const ADAPTERS: Record<string, Adapter> = {
   [mlhAdapter.source]: mlhAdapter,
   [icalAdapter.source]: icalAdapter,
   [fixtureAdapter.source]: fixtureAdapter,
+  [llmExtractAdapter.source]: llmExtractAdapter,
 };
 
 export const TIER_ADAPTERS: Record<string, Adapter> = {
   "JSON-LD": jsonldAdapter,
+  extraction: llmExtractAdapter,
 };
 
 export function resolveAdapter(feed: { source: string; tier?: string }): Adapter | undefined {
