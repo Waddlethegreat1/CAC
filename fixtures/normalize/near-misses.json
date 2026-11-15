@@ -155,7 +155,7 @@
     }
   },
   {
-    "name": "same source, different listing",
+    "name": "same source, same title, sessions an hour apart",
     "a": {
       "source": "luma",
       "sourceId": "s-1",
@@ -176,7 +176,7 @@
       "title": "Founders Pitch Night",
       "description": "Startup founders meet investors.",
       "url": "https://luma.com/x",
-      "startsAt": "2026-12-10T18:00:00-08:00",
+      "startsAt": "2026-12-10T19:00:00-08:00",
       "timezone": "America/Los_Angeles",
       "location": {
         "online": false,

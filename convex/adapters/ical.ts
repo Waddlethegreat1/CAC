@@ -6,6 +6,8 @@ import { toZonedIso, zonedToUtc } from "../lib/time";
 const HORIZON_DAYS = 60;
 const MAX_OCCURRENCES_SCANNED = 50_000;
 const DAY_MS = 86_400_000;
+const ONLINE_TEXT = /^(online( event| only)?|virtual( event)?|zoom( webinar| meeting| call)?|webinar|google meet|(ms |microsoft )?teams|livestream|remote)$/i;
+const PLACEHOLDER_TEXT = /\b(sign in to|log in to|register to see|check (the )?event page|will be (shared|sent|provided)|to be (announced|determined|confirmed))\b|^(tba|tbd|tbc)$/i;
 const ONLINE_MEETING_HOST = /(^|\.)(zoom\.us|meet\.google\.com|teams\.microsoft\.com|teams\.live\.com|webex\.com|youtube\.com|youtu\.be|twitch\.tv|discord\.gg|discord\.com)$/i;
 
 const TIMEZONE_ALIASES: Record<string, string> = {
@@ -127,8 +129,9 @@ export function parseIcal(ics: string, opts: { source: string; feedUrl: string; 
 
 function toLocation(text: string | undefined, isUrl: boolean, geo: unknown): RawLocation {
   if (isUrl && ONLINE_MEETING_HOST.test(new URL(text!).hostname)) return { online: true };
+  if (text && ONLINE_TEXT.test(text)) return { online: true };
   const location: RawLocation = { online: false };
-  if (text && !isUrl) location.address = text;
+  if (text && !isUrl && !PLACEHOLDER_TEXT.test(text)) location.address = text;
   if (Array.isArray(geo) && geo.length === 2 && geo.every((n) => typeof n === "number" && Number.isFinite(n))) {
     location.lat = geo[0];
     location.lng = geo[1];

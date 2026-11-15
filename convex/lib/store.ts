@@ -3,6 +3,7 @@ import type { MutationCtx } from "../_generated/server";
 import { DEFAULT_FEEDS } from "../adapters";
 import type { NormalizedEvent } from "../normalize";
 import { dedupeKey, findDuplicate, mergeEvents, sourceOf, sourcesOf, unionSources, type EventSource } from "../normalize/dedupe";
+import { isFixtureUrl } from "./fixtures";
 import { INTERESTS } from "./interests";
 import { scoutingFields } from "./scouting";
 import type { RawEvent } from "./rawEvent";
@@ -21,7 +22,16 @@ export async function upsertRawListing(ctx: MutationCtx, raw: RawEvent, feedId?:
 }
 
 export function eventDoc(event: NormalizedEvent, sources: EventSource[], rawListingId?: Id<"raw_listings">) {
-  return { ...event, ...scoutingFields(event), rawListingId, lastSeenAt: Date.now(), dedupeKey: dedupeKey(event), sources };
+  const synthetic = isFixtureUrl(event.url) || sources.some((s) => isFixtureUrl(s.url) || isFixtureUrl(s.sourceId));
+  return {
+    ...event,
+    ...scoutingFields(event),
+    rawListingId,
+    lastSeenAt: Date.now(),
+    dedupeKey: dedupeKey(event),
+    sources,
+    ...(synthetic ? { synthetic } : {}),
+  };
 }
 
 export function mergeInto(
