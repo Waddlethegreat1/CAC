@@ -1,10 +1,11 @@
 import { StyleSheet, Text, View } from "react-native";
 
 import { Icon } from "@/components/icon";
-import { colors, INVESTOR_LIKELY_MIN, INVESTOR_SOME_MIN, radius, type } from "@/constants/theme";
+import { colors, INVESTOR_SOME_MIN, radius, type } from "@/constants/theme";
+import { INVESTORS_LIKELY_MIN } from "@/convex/lib/ranking";
 
 export function investorTier(score: number) {
-  return score >= INVESTOR_LIKELY_MIN ? "high" : score >= INVESTOR_SOME_MIN ? "mid" : "low";
+  return score >= INVESTORS_LIKELY_MIN ? "high" : score >= INVESTOR_SOME_MIN ? "mid" : "low";
 }
 
 export function InvestorBadge({ score, variant = "badge" }: { score: number; variant?: "badge" | "meter" }) {

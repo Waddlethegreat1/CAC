@@ -1,4 +1,5 @@
 import type { Doc } from "../../../../convex/_generated/dataModel";
+import { INVESTORS_LIKELY_MIN } from "../../../../convex/lib/ranking";
 
 export type ScoutEvent = Pick<
   Doc<"events">,
@@ -125,7 +126,7 @@ export function applyFilters(list: Scouted[], f: Filters, now: number): Scouted[
 
 export function weekShortlist(list: Scouted[], now: number, size = 3): Scouted[] {
   return list
-    .filter((s) => s.event.startTime <= now + 7 * DAY && !(isLongRunning(s.event) && s.event.startTime < now) && s.event.investorScore >= 60)
+    .filter((s) => s.event.startTime <= now + 7 * DAY && !(isLongRunning(s.event) && s.event.startTime < now) && s.event.investorScore >= INVESTORS_LIKELY_MIN)
     .slice(0, size);
 }
 
