@@ -1,5 +1,6 @@
 import type { Adapter } from "../lib/adapter";
 import { devpostAdapter } from "./devpost";
+import { eventbriteAdapter } from "./eventbrite";
 import { fixtureAdapter } from "./fixture";
 import { icalAdapter } from "./ical";
 import { jsonldAdapter } from "./jsonld";
@@ -9,6 +10,7 @@ import { mlhAdapter } from "./mlh";
 
 export const ADAPTERS: Record<string, Adapter> = {
   [devpostAdapter.source]: devpostAdapter,
+  [eventbriteAdapter.source]: eventbriteAdapter,
   [jsonldAdapter.source]: jsonldAdapter,
   [lumaAdapter.source]: lumaAdapter,
   [mlhAdapter.source]: mlhAdapter,
