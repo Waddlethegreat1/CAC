@@ -182,7 +182,8 @@ export default defineSchema({
   })
     .index("by_user_event", ["userId", "eventId"])
     .index("by_user_going", ["userId", "going"])
-    .index("by_user_attended", ["userId", "attended"]),
+    .index("by_user_attended", ["userId", "attended"])
+    .index("by_event", ["eventId"]),
 
   attendance_totals: defineTable({
     eventId: v.id("events"),
