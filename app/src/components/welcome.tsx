@@ -13,7 +13,7 @@ import { colors, radius, type } from "@/constants/theme";
 const poster = require("../../assets/welcome/poster.jpg");
 const video = require("../../assets/welcome/collaboration.mp4");
 
-export function Welcome({ onGetStarted }: { onGetStarted: () => void }) {
+export function Welcome({ onGetStarted, onSignIn }: { onGetStarted: () => void; onSignIn: () => void }) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const focused = useIsFocused();
@@ -83,6 +83,19 @@ export function Welcome({ onGetStarted }: { onGetStarted: () => void }) {
             <Text style={styles.ctaText}>Get started</Text>
             <Icon name="chevron-right" size={20} color={colors.ink} />
           </Pressable>
+          <Pressable
+            testID="have-account"
+            accessibilityRole="link"
+            accessibilityHint="Sign in with your email and password"
+            onPress={() => {
+              setLeaving(true);
+              onSignIn();
+            }}
+            hitSlop={8}
+            style={styles.signIn}
+          >
+            <Text style={styles.signInText}>I already have an account</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </View>
@@ -148,5 +161,7 @@ const styles = StyleSheet.create({
   support: { fontSize: 16, lineHeight: 24, color: "#CDD2CF", marginTop: 20, maxWidth: 320 },
   cta: { marginTop: 32, minHeight: 58, borderRadius: radius.button, backgroundColor: "#FAFAF7", paddingHorizontal: 20, paddingVertical: 17, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 16 },
   ctaPressed: { backgroundColor: "#DDE1DD" },
+  signIn: { alignSelf: "center", marginTop: 16, paddingVertical: 8 },
+  signInText: { ...type.label, fontSize: 15, color: "#FAFAF7" },
   ctaText: { ...type.bodyStrong, color: colors.ink, fontSize: 16, lineHeight: 24 },
 });

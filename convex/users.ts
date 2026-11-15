@@ -1,5 +1,7 @@
+import { getAuthSessionId, getAuthUserId } from "@convex-dev/auth/server";
 import { ConvexError, v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { mutation, query, type QueryCtx } from "./_generated/server";
 import { CONTACT_FIELDS, checkContactField } from "./lib/contact";
 import { role } from "./schema";
 
@@ -43,6 +45,9 @@ export const upsert = mutation({
       }
       const result = checkContactField(field, raw);
       if ("error" in result) throw new ConvexError({ field, message: result.error });
+      if (field === "email" && existing && result.value !== existing.email && (await hasAccount(ctx, existing._id))) {
+        throw new ConvexError({ field, message: "Your email is how you sign in, so it can't be changed yet" });
+      }
       doc[field] = result.value || undefined;
     }
     if (existing) {
@@ -50,5 +55,23 @@ export const upsert = mutation({
       return existing._id;
     }
     return ctx.db.insert("users", doc);
+  },
+});
+
+const hasAccount = async (ctx: QueryCtx, userId: Id<"users">) =>
+  (await ctx.db
+    .query("authAccounts")
+    .withIndex("userIdAndProvider", (q) => q.eq("userId", userId))
+    .first()) !== null;
+
+export const accountDeviceId = query({
+  args: {},
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx) => {
+    const [userId, sessionId] = await Promise.all([getAuthUserId(ctx), getAuthSessionId(ctx)]);
+    if (!userId || !sessionId) return null;
+    const session = await ctx.db.get(sessionId);
+    if (!session || session.userId !== userId || session.expirationTime < Date.now()) return null;
+    return (await ctx.db.get(userId))?.deviceId ?? null;
   },
 });
