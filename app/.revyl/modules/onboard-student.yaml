@@ -1,0 +1,15 @@
+blocks:
+    - type: validation
+      step_description: The onboarding screen says "Find the rooms where startups happen" and offers an "I'm a student" option and an "I'm an investor" option.
+    - type: instructions
+      step_description: Tap the "I'm a student" option, then tap Continue.
+    - type: validation
+      step_description: A screen titled "What are you into" shows interest chips.
+    - type: instructions
+      step_description: Tap Continue.
+    - type: validation
+      step_description: A screen titled "Where should we look" shows a list of Bay Area areas and a "How far will you go" distance choice.
+    - type: instructions
+      step_description: Tap the "Palo Alto" area chip, then tap the "Show my events" button.
+    - type: validation
+      step_description: The feed shows a "For you" heading with a location pill that reads "Palo Alto", at least one event card, and a tab bar at the bottom with Feed, Saved and Profile tabs.
