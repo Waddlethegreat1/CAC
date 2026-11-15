@@ -35,7 +35,7 @@ export function EventPrep({ event, deviceId }: { event: Doc<"events">; deviceId:
       else await generateBriefing({ deviceId, eventId: event._id });
     } catch (e) {
       const message = e instanceof Error ? e.message : "";
-      setError(message.includes("Too many") || message.includes("rate limit") ? "A few too many requests. Try again in a minute" : "Couldn't prepare this card. Check your connection and try again");
+      setError(message.includes("onboarding") ? "Finish setting up Scout before generating a card" : message.includes("Too many") || message.includes("rate limit") ? "A few too many requests. Try again in a minute" : "Couldn't prepare this card. Check your connection and try again");
     } finally {
       setPending(false);
     }

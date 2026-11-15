@@ -178,8 +178,8 @@ describe("prep cards", () => {
     for (const call of [
       () => t.action(briefing, { ...args, deviceId: "unknown" }),
       () => t.action(followup, { ...args, deviceId: "unknown", recipient: "Ada" }),
-      () => t.query(get, { ...args, deviceId: "unknown" }),
     ]) await expect(call()).rejects.toThrow("onboarding");
+    expect(await t.query(get, { ...args, deviceId: "unknown" })).toEqual({ briefing: null, followup: null });
     for (const recipient of ["", "   ", "Ada\nBcc: bad", "a".repeat(121)]) {
       await expect(t.action(followup, { ...args, recipient })).rejects.toThrow("Recipient");
     }

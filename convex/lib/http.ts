@@ -57,15 +57,45 @@ export const reserveSlot = internalMutation({
   },
 });
 
-export async function throttledFetch(ctx: ActionCtx, url: string, accept: string) {
+export async function throttledFetch(ctx: ActionCtx, url: string, accept: string, redirect: RequestRedirect = "follow") {
   const domain = new URL(url).host;
   const at = await ctx.runMutation(internal.lib.http.reserveSlot, { domain });
   const wait = at - Date.now();
   if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-  return fetch(url, { headers: { "User-Agent": USER_AGENT, Accept: accept } });
+  return fetch(url, { headers: { "User-Agent": USER_AGENT, Accept: accept }, redirect });
 }
 
-export function makeHttp(ctx: ActionCtx): Http {
+export class UnsafeUrlError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UnsafeUrlError";
+  }
+}
+
+export const MAX_REDIRECTS = 5;
+
+export type HttpOptions = {
+  validateUrl?: (url: string) => string | undefined;
+};
+
+export function makeHttp(ctx: ActionCtx, { validateUrl }: HttpOptions = {}): Http {
+  const guardedFetch = async (url: string, accept: string, beforeHop?: (url: string) => Promise<void>) => {
+    if (!validateUrl) return throttledFetch(ctx, url, accept);
+    let current = url;
+    for (let hop = 0; ; hop++) {
+      const res = await throttledFetch(ctx, current, accept, "manual");
+      if (res.status < 300 || res.status >= 400) return res;
+      const location = res.headers.get("location");
+      if (!location) return res;
+      if (hop >= MAX_REDIRECTS) throw new UnsafeUrlError(`${url} redirected more than ${MAX_REDIRECTS} times`);
+      const next = new URL(location, current).toString();
+      const problem = validateUrl(next);
+      if (problem) throw new UnsafeUrlError(`${current} redirected to a blocked address: ${problem}`);
+      await beforeHop?.(next);
+      current = next;
+    }
+  };
+
   const robotsFor = async (url: string) => {
     const { host, origin } = new URL(url);
     const cached = await ctx.runQuery(internal.lib.http.getRobots, { domain: host });
@@ -73,7 +103,7 @@ export function makeHttp(ctx: ActionCtx): Http {
     let body: string;
     let ttlMs = ROBOTS_TTL_MS;
     try {
-      const res = await throttledFetch(ctx, `${origin}/robots.txt`, "text/plain");
+      const res = await guardedFetch(`${origin}/robots.txt`, "text/plain");
       if (res.ok) body = await res.text();
       else if (res.status >= 400 && res.status < 500) body = "";
       else {
@@ -90,8 +120,13 @@ export function makeHttp(ctx: ActionCtx): Http {
 
   return {
     async text(url, accept = "*/*") {
-      if (!isAllowed(await robotsFor(url), url)) throw new RobotsDisallowedError(url);
-      const res = await throttledFetch(ctx, url, accept);
+      const problem = validateUrl?.(url);
+      if (problem) throw new UnsafeUrlError(`${url} is a blocked address: ${problem}`);
+      const checkRobots = async (target: string) => {
+        if (!isAllowed(await robotsFor(target), target)) throw new RobotsDisallowedError(target);
+      };
+      await checkRobots(url);
+      const res = await guardedFetch(url, accept, checkRobots);
       if (!res.ok) throw new Error(`${url} responded ${res.status}`);
       return res.text();
     },

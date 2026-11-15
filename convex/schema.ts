@@ -109,6 +109,7 @@ export default defineSchema({
     studentDensity: v.optional(v.number()),
     dedupeKey: v.optional(v.string()),
     sources: v.optional(v.array(eventSource)),
+    synthetic: v.optional(v.boolean()),
   })
     .index("by_start", ["startTime"])
     .index("by_dedupeKey", ["dedupeKey"])
@@ -146,6 +147,21 @@ export default defineSchema({
     order: v.number(),
   }).index("by_slug", ["slug"]),
 
+  link_submissions: defineTable({
+    deviceId: v.string(),
+    url: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("added"),
+      v.literal("duplicate"),
+      v.literal("needs_review"),
+      v.literal("rejected"),
+    ),
+    eventIds: v.array(v.id("events")),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_device", ["deviceId", "createdAt"]),
+
   saves: defineTable({
     userId: v.id("users"),
     eventId: v.id("events"),
@@ -177,7 +193,9 @@ export default defineSchema({
       email: v.string(),
       source: v.union(v.literal("template"), v.literal("model")),
     }),
-  }).index("by_user_event", ["userId", "eventId"]),
+  })
+    .index("by_user_event", ["userId", "eventId"])
+    .index("by_event", ["eventId"]),
 
   prep_rates: defineTable({
     userId: v.id("users"),

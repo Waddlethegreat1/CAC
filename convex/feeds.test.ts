@@ -6,6 +6,7 @@ import { isAllowed } from "./lib/robots";
 import { resolveAdapter } from "./adapters";
 import { icalAdapter } from "./adapters/ical";
 import { jsonldAdapter } from "./adapters/jsonld";
+import { llmExtractAdapter } from "./adapters/llm/adapter";
 import stubEvents from "../fixtures/fixture/events.json";
 
 const modules = import.meta.glob(["./**/*.ts", "./**/*.js", "!./**/*.test.ts", "!./**/*.d.ts"]);
@@ -52,7 +53,7 @@ describe("adapter registry", () => {
   test("resolves by source first, then by tier", () => {
     expect(resolveAdapter({ source: "ical", tier: "feed" })).toBe(icalAdapter);
     expect(resolveAdapter({ source: "html", tier: "JSON-LD" })).toBe(jsonldAdapter);
-    expect(resolveAdapter({ source: "html", tier: "extraction" })).toBeUndefined();
+    expect(resolveAdapter({ source: "html", tier: "extraction" })).toBe(llmExtractAdapter);
   });
 });
 

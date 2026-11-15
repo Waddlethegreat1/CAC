@@ -80,7 +80,7 @@ export async function findDuplicate(ctx: Pick<QueryCtx, "db">, event: Normalized
     .query("events")
     .withIndex("by_dedupeKey", (q) => q.eq("dedupeKey", dedupeKey(event)))
     .take(20);
-  const exact = keyed.find(candidate);
+  const exact = keyed.find((d) => candidate(d) || (d._id !== exclude && d.startTime === event.startTime));
   if (exact) return exact;
 
   const nearby = (

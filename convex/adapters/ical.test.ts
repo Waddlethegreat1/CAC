@@ -76,3 +76,35 @@ describe("ical adapter", () => {
     expect(() => parseIcal('{"message":"Group not found"}', { source: "ical", feedUrl: GOOGLE_URL, now: NOW })).toThrow("not an iCalendar");
   });
 });
+
+describe("ical location text", () => {
+  const vevent = (location: string) =>
+    [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "BEGIN:VEVENT",
+      "UID:loc-test",
+      "DTSTART:20261120T020000Z",
+      "DTEND:20261120T040000Z",
+      "SUMMARY:Founder pitch night",
+      `LOCATION:${location}`,
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+  const locationOf = (text: string) => parseIcal(vevent(text), { source: "ical", feedUrl: "https://example.com/cal.ics", now: NOW })[0].location;
+
+  it("treats meeting-room words as online", () => {
+    for (const text of ["Zoom", "Virtual", "Online event", "Zoom Webinar"]) expect(locationOf(text)).toEqual({ online: true });
+  });
+
+  it("drops placeholder text instead of geocoding it", () => {
+    for (const text of ["Sign in to download the location", "Detailed agenda and location will be shared directly with selected applicants", "TBA"]) {
+      expect(locationOf(text)).toEqual({ online: false });
+    }
+  });
+
+  it("keeps real venues", () => {
+    expect(locationOf("Evans 597")).toEqual({ online: false, address: "Evans 597" });
+    expect(locationOf("Zoomcar HQ, Palo Alto")).toEqual({ online: false, address: "Zoomcar HQ, Palo Alto" });
+  });
+});

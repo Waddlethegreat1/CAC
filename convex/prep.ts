@@ -71,6 +71,8 @@ export const get = query({
   args: prepArgs,
   returns: v.object({ briefing: v.union(briefingValue, v.null()), followup: v.union(followupValue, v.null()) }),
   handler: async (ctx, args) => {
+    const user = await ctx.db.query("users").withIndex("by_device", (q) => q.eq("deviceId", args.deviceId)).unique();
+    if (!user || !await ctx.db.get(args.eventId)) return { briefing: null, followup: null };
     const data = await load(ctx, args);
     return { briefing: data.briefing, followup: data.followup };
   },
