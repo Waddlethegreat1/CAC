@@ -8,6 +8,8 @@ import { RobotsDisallowedError, makeHttp } from "./lib/http";
 import { rawEvent } from "./lib/rawEvent";
 import { ensureDefaults, upsertEvent, upsertRawListing } from "./lib/store";
 import { normalize } from "./normalize";
+import { embedderFromEnv } from "./normalize/embed";
+import { nominatimGeocoder } from "./normalize/geocode";
 import { normalizedEvent } from "./schema";
 
 const BATCH = 50;
@@ -82,7 +84,9 @@ export const runFeed = internalAction({
     }
     try {
       const raws = await adapter.fetch(feed, makeHttp(ctx));
-      const items = await Promise.all(raws.map(async (raw) => ({ raw, event: await normalize(raw) })));
+      const geocode = nominatimGeocoder(ctx);
+      const items = await Promise.all(raws.map(async (raw) => ({ raw, event: await normalize(raw, { geocode }) })));
+      await embedderFromEnv()?.embed(items.flatMap((i) => (i.event ? [i.event] : [])));
       for (let i = 0; i < items.length; i += BATCH) {
         await ctx.runMutation(internal.ingest.store, { feedId, items: items.slice(i, i + BATCH) });
       }
