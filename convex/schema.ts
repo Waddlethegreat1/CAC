@@ -119,6 +119,7 @@ export default defineSchema({
     lat: v.number(),
     lng: v.number(),
     locationSource: v.union(v.literal("device"), v.literal("city")),
+    radiusKm: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_device", ["deviceId"]),
 

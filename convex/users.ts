@@ -20,6 +20,7 @@ export const upsert = mutation({
     lat: v.number(),
     lng: v.number(),
     locationSource: v.union(v.literal("device"), v.literal("city")),
+    radiusKm: v.optional(v.number()),
   },
   returns: v.id("users"),
   handler: async (ctx, args) => {
@@ -27,7 +28,7 @@ export const upsert = mutation({
       .query("users")
       .withIndex("by_device", (q) => q.eq("deviceId", args.deviceId))
       .unique();
-    const doc = { ...args, updatedAt: Date.now() };
+    const doc = { ...args, radiusKm: args.radiusKm ?? existing?.radiusKm, updatedAt: Date.now() };
     if (existing) {
       await ctx.db.replace(existing._id, doc);
       return existing._id;
