@@ -16,6 +16,10 @@ test:
         name: Scout iOS
     blocks:
         - type: validation
+          step_description: A welcome screen says "Be in the room when it happens" and shows a "Get started" button.
+        - type: instructions
+          step_description: Tap the "Get started" button.
+        - type: validation
           step_description: The onboarding screen says "Find the rooms where startups happen" and shows an "I'm a student" option and an "I'm an investor" option.
         - type: instructions
           step_description: Tap the Student option.

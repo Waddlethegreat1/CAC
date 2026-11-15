@@ -15,6 +15,10 @@ test:
     build:
         name: Scout iOS
     blocks:
+        - type: validation
+          step_description: A welcome screen says "Be in the room when it happens" and shows a "Get started" button.
+        - type: instructions
+          step_description: Tap the "Get started" button.
         - type: instructions
           step_description: Complete onboarding as a student using Palo Alto if onboarding is shown. Do not grant location permission.
         - type: instructions
