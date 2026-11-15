@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 import { api, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import schema from "./schema";
-import { reassignEventRefs } from "./normalize/reassignEventRefs";
+import { deleteEventRefs, reassignEventRefs } from "./normalize/reassignEventRefs";
 
 const modules = import.meta.glob(["./**/*.ts", "./**/*.js", "!./**/*.test.ts", "!./**/*.d.ts"]);
 const event = (source: string) => ({
@@ -34,6 +34,60 @@ async function setup() {
 }
 
 describe("attendance across duplicate-event backfills", () => {
+  test("deleting event references preserves unrelated events, profiles and references and is safe to retry", async () => {
+    const { t, ids: [purge, unrelated], user, attendance } = await setup();
+    const sharedUser = await user("shared");
+    const unrelatedUser = await user("unrelated");
+    await attendance(sharedUser, purge, { attended: true, rating: 5, investors: "yes", note: "Synthetic feedback" });
+    await attendance(unrelatedUser, purge, { dismissedAt: 10 });
+    await attendance(sharedUser, unrelated, { attended: true, rating: 3, investors: "no", note: "Real feedback" });
+    await attendance(unrelatedUser, unrelated);
+    await t.run(async (ctx) => {
+      for (const eventId of [purge, unrelated]) {
+        for (const userId of [sharedUser, unrelatedUser]) await ctx.db.insert("saves", { userId, eventId, savedAt: 10 });
+        await ctx.db.insert("attendance_totals", { eventId, ratingCount: 1, ratingSum: eventId === purge ? 5 : 3, investorConfirmations: eventId === purge ? 1 : 0 });
+      }
+    });
+    const snapshot = () => t.run(async (ctx) => ({
+      events: await ctx.db.query("events").collect(), users: await ctx.db.query("users").collect(),
+      saves: await ctx.db.query("saves").collect(), attendance: await ctx.db.query("attendance").collect(),
+      totals: await ctx.db.query("attendance_totals").collect(),
+    }));
+    const before = await snapshot();
+    await t.run(async (ctx) => {
+      await deleteEventRefs(ctx, purge);
+      await ctx.db.delete(purge);
+    });
+    const expected = {
+      events: before.events.filter((r) => r._id !== purge), users: before.users,
+      saves: before.saves.filter((r) => r.eventId !== purge), attendance: before.attendance.filter((r) => r.eventId !== purge),
+      totals: before.totals.filter((r) => r.eventId !== purge),
+    };
+    expect(await snapshot()).toEqual(expected);
+    await t.run((ctx) => deleteEventRefs(ctx, purge));
+    expect(await snapshot()).toEqual(expected);
+    expect((await t.query(api.attendance.history, { deviceId: "shared" })).map((r) => r.event._id)).toEqual([unrelated]);
+    expect(await t.query(api.attendance.mine, { deviceId: "shared" })).toEqual([{ eventId: unrelated, going: true, attended: true, rating: 3, investors: "no", note: "Real feedback" }]);
+  });
+
+  test("cleanup fails closed before deleting anything when the combined reference limit is exceeded", async () => {
+    const { t, ids: [purge], user, attendance } = await setup();
+    const userId = await user("limit");
+    await attendance(userId, purge);
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 3999; i++) await ctx.db.insert("saves", { userId, eventId: purge, savedAt: i });
+      await ctx.db.insert("attendance_totals", { eventId: purge, ratingCount: 0, ratingSum: 0, investorConfirmations: 0 });
+    });
+    await expect(t.run(async (ctx) => {
+      await deleteEventRefs(ctx, purge);
+      await ctx.db.delete(purge);
+    })).rejects.toThrow("cleanup exceeds transaction limit");
+    expect(await t.run((ctx) => ctx.db.get(purge))).not.toBeNull();
+    expect(await t.run((ctx) => ctx.db.query("saves").collect())).toHaveLength(3999);
+    expect(await t.run((ctx) => ctx.db.query("attendance").collect())).toHaveLength(1);
+    expect(await t.run((ctx) => ctx.db.query("attendance_totals").collect())).toHaveLength(1);
+  });
+
   test("the reusable hook moves saves and attendance together and tolerates retries and self-reassignment", async () => {
     const { t, ids: [keep, drop], user, attendance, snapshot } = await setup();
     const both = await user("both");

@@ -71,3 +71,14 @@ export async function reassignEventRefs(ctx: MutationCtx, fromId: Id<"events">, 
   }
   await mergeAttendance(ctx, fromId, toId);
 }
+
+export async function deleteEventRefs(ctx: MutationCtx, eventId: Id<"events">) {
+  const groups = await Promise.all([
+    ctx.db.query("saves").withIndex("by_event", (q) => q.eq("eventId", eventId)).take(MAX_MERGE_RECORDS + 1),
+    ctx.db.query("attendance").withIndex("by_event", (q) => q.eq("eventId", eventId)).take(MAX_MERGE_RECORDS + 1),
+    ctx.db.query("attendance_totals").withIndex("by_event", (q) => q.eq("eventId", eventId)).take(MAX_MERGE_RECORDS + 1),
+  ]);
+  const records = groups.flat();
+  if (records.length > MAX_MERGE_RECORDS) throw new Error("Event reference cleanup exceeds transaction limit");
+  for (const record of records) await ctx.db.delete(record._id);
+}
