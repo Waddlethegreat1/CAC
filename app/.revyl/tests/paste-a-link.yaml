@@ -32,18 +32,18 @@ test:
         - type: validation
           step_description: Red text under the field reads "That doesn't look like a link. Check it and try again".
         - type: instructions
-          step_description: Clear the "Event link" field, type "https://luma.com/2a7wm1zs", then tap the "Add event" button.
+          step_description: Clear the "Event link" field, type "https://nautical-sheep-358.convex.site/fixtures/scout-test-event", then tap the "Add event" button.
         - type: validation
-          step_description: Within 30 seconds a result card appears below the button with the heading "Added to Scout" or "Scout already lists this event", an event card titled "2026 Super Demo Day", and an "Add another link" button.
+          step_description: Within 30 seconds a result card appears below the button with the heading "Added to Scout" or "Scout already lists this event", an event card titled "[TEST] Scout fixture hack night", and an "Add another link" button.
         - type: instructions
-          step_description: Tap the "2026 Super Demo Day" event card in the result.
+          step_description: Tap the "[TEST] Scout fixture hack night" event card in the result.
         - type: validation
-          step_description: An event detail screen shows the title "2026 Super Demo Day", a date line, and an investor signal section with a score out of 100.
+          step_description: An event detail screen shows the title "[TEST] Scout fixture hack night", a date line, and an investor signal section with a score out of 100.
         - type: instructions
           step_description: Tap the back arrow at the top left to return to the "Add an event" screen, then tap "My submissions" at the top right.
         - type: validation
-          step_description: A screen titled "My submissions" lists a card for luma.com with the path "/2a7wm1zs", a status that reads "Added" or "Already listed", and "2026 Super Demo Day" event card inside it.
+          step_description: A screen titled "My submissions" lists a card for nautical-sheep-358.convex.site with the path "/fixtures/scout-test-event", a status that reads "Added" or "Already listed", and "[TEST] Scout fixture hack night" event card inside it.
         - type: instructions
-          step_description: Tap the "2026 Super Demo Day" event card inside the luma.com submission.
+          step_description: Tap the "[TEST] Scout fixture hack night" event card inside the nautical-sheep-358.convex.site submission.
         - type: validation
-          step_description: The event detail screen for "2026 Super Demo Day" opens.
+          step_description: The event detail screen for "[TEST] Scout fixture hack night" opens.
