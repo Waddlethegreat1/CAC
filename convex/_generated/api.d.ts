@@ -36,6 +36,7 @@ import type * as lib_scouting from "../lib/scouting.js";
 import type * as lib_store from "../lib/store.js";
 import type * as lib_tagger from "../lib/tagger.js";
 import type * as lib_time from "../lib/time.js";
+import type * as links from "../links.js";
 import type * as normalize_backfill from "../normalize/backfill.js";
 import type * as normalize_dedupe from "../normalize/dedupe.js";
 import type * as normalize_embed from "../normalize/embed.js";
@@ -80,6 +81,7 @@ declare const fullApi: ApiFromModules<{
   "lib/store": typeof lib_store;
   "lib/tagger": typeof lib_tagger;
   "lib/time": typeof lib_time;
+  links: typeof links;
   "normalize/backfill": typeof normalize_backfill;
   "normalize/dedupe": typeof normalize_dedupe;
   "normalize/embed": typeof normalize_embed;
