@@ -70,6 +70,21 @@ export async function reassignEventRefs(ctx: MutationCtx, fromId: Id<"events">, 
     else await ctx.db.patch(save._id, { eventId: toId });
   }
   await mergeAttendance(ctx, fromId, toId);
+  await mergeConnectionRefs(ctx, fromId, toId);
+}
+
+async function mergeConnectionRefs(ctx: MutationCtx, from: Id<"events">, to: Id<"events">) {
+  const [hosts, connections] = await Promise.all([
+    ctx.db.query("event_hosts").withIndex("by_event", (q) => q.eq("eventId", from)).take(MAX_MERGE_RECORDS + 1),
+    ctx.db.query("connections").withIndex("by_event", (q) => q.eq("eventId", from)).take(MAX_MERGE_RECORDS + 1),
+  ]);
+  if (hosts.length + connections.length > MAX_MERGE_RECORDS) throw new Error("Connection merge exceeds transaction limit");
+  for (const host of hosts) {
+    const already = await ctx.db.query("event_hosts").withIndex("by_event", (q) => q.eq("eventId", to).eq("companyId", host.companyId)).unique();
+    if (already) await ctx.db.delete(host._id);
+    else await ctx.db.patch(host._id, { eventId: to });
+  }
+  for (const connection of connections) await ctx.db.patch(connection._id, { eventId: to });
 }
 
 export async function deleteEventRefs(ctx: MutationCtx, eventId: Id<"events">) {
@@ -77,9 +92,12 @@ export async function deleteEventRefs(ctx: MutationCtx, eventId: Id<"events">) {
     ctx.db.query("saves").withIndex("by_event", (q) => q.eq("eventId", eventId)).take(MAX_MERGE_RECORDS + 1),
     ctx.db.query("attendance").withIndex("by_event", (q) => q.eq("eventId", eventId)).take(MAX_MERGE_RECORDS + 1),
     ctx.db.query("attendance_totals").withIndex("by_event", (q) => q.eq("eventId", eventId)).take(MAX_MERGE_RECORDS + 1),
+    ctx.db.query("event_hosts").withIndex("by_event", (q) => q.eq("eventId", eventId)).take(MAX_MERGE_RECORDS + 1),
   ]);
+  const connections = await ctx.db.query("connections").withIndex("by_event", (q) => q.eq("eventId", eventId)).take(MAX_MERGE_RECORDS + 1);
   const records = groups.flat();
-  if (records.length > MAX_MERGE_RECORDS) throw new Error("Event reference cleanup exceeds transaction limit");
+  if (records.length + connections.length > MAX_MERGE_RECORDS) throw new Error("Event reference cleanup exceeds transaction limit");
   for (const record of records) await ctx.db.delete(record._id);
+  for (const connection of connections) await ctx.db.patch(connection._id, { eventId: undefined });
   return { saves: groups[0].length };
 }
