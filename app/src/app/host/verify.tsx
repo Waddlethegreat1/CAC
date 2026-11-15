@@ -58,7 +58,7 @@ export default function HostVerifyScreen() {
     }
   };
 
-  const awaiting = editing ? null : sent ?? (status.pending ? { sentTo: status.pending.email, expiresAt: status.pending.expiresAt, verificationMode: null } : null);
+  const awaiting = editing ? null : sent ?? (status.pending ? { sentTo: status.pending.email, expiresAt: status.pending.expiresAt, verificationMode: status.pending.verificationMode } : null);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -84,9 +84,10 @@ export default function HostVerifyScreen() {
         ) : (
           <>
             <Text style={[styles.body, { marginTop: space.md }]}>
-              {awaiting.verificationMode === "dev" ? "Dev verification: no email was sent." : awaiting.verificationMode === "email" ? `We sent a 6-digit code to ${awaiting.sentTo}.` : `A code is waiting for ${awaiting.sentTo}. On a dev deployment no email is sent, so resend to see a new code.`} It expires at {new Date(awaiting.expiresAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}.
+              {awaiting.verificationMode === "dev" ? "Dev verification: no email was sent." : `We sent a 6-digit code to ${awaiting.sentTo}.`} It expires at {new Date(awaiting.expiresAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}.
             </Text>
             {awaiting.verificationMode === "dev" ? <DevNote code={sent?.devCode} /> : null}
+            {awaiting.verificationMode === "dev" && !sent?.devCode ? <Text style={styles.meta}>The dev code is only shown right after sending. Resend to see a new one</Text> : null}
             <Card style={{ padding: 14, marginTop: space.lg, gap: space.sm }}>
               <TextInput
                 testID="verification-code"

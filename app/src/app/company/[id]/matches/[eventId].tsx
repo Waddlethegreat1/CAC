@@ -12,7 +12,7 @@ import { colors, space } from "@/constants/theme";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useDeviceId } from "@/lib/device";
-import { errorCopy, eventEnded } from "@/lib/connections";
+import { errorCopy, eventEnded, shortDate } from "@/lib/connections";
 
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   return (
@@ -63,6 +63,8 @@ export default function TalentMatchesScreen() {
           <Button testID={`match-chat-${i}`} label="Open chat" variant="outline" style={[styles.small, { alignSelf: "flex-start" }]} onPress={() => router.push({ pathname: "/chat/[id]", params: { id: m.connection!._id } })} />
         ) : m.connection?.status === "pending" && m.connection.initiatedBy === "talent" ? (
           <Button testID={`match-inbox-${i}`} label="Respond in Inbox" variant="outline" style={[styles.small, { alignSelf: "flex-start" }]} onPress={() => router.push("/inbox")} />
+        ) : !m.connection && m.blockedUntil ? (
+          <Text style={styles.meta}>Declined. You can reach out again after {shortDate(m.blockedUntil)}</Text>
         ) : !m.connection && ended ? (
           <Button testID={`match-interested-${i}`} label="Interested" style={[styles.small, { alignSelf: "flex-start" }]} onPress={() => setTarget({ userId: m.talent.userId, name })} />
         ) : null}

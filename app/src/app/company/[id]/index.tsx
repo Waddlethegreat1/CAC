@@ -209,7 +209,7 @@ function JoinRequests({ companyId, requests }: { companyId: Id<"companies">; req
   );
 }
 
-function PendingClaims({ claims }: { claims: { claimId: Id<"event_hosts">; event: EventSummary; requestedByName: string | null; createdAt: number }[] }) {
+function PendingClaims({ claims }: { claims: { claimId: Id<"event_hosts">; event: EventSummary; requestedByName: string | null; createdAt: number; canReview: boolean }[] }) {
   const deviceId = useDeviceId();
   const review = useMutation(api.hosts.reviewClaim);
   const { busy, error, run } = useRun();
@@ -221,10 +221,10 @@ function PendingClaims({ claims }: { claims: { claimId: Id<"event_hosts">; event
           <View key={c.claimId} testID={`pending-claim-${i}`} style={[styles.row, i > 0 && styles.divider]}>
             <Text style={styles.title}>{c.event.title}</Text>
             <Text style={styles.meta}>{c.requestedByName ?? "A teammate"} says your company hosts this · {shortDate(c.event.startTime)}</Text>
-            <View style={styles.actions}>
+            {c.canReview ? <View style={styles.actions}>
               <Button testID={`approve-claim-${i}`} label="Approve" style={styles.small} loading={busy === c.claimId} onPress={() => deviceId && void run(c.claimId, () => review({ deviceId, claimId: c.claimId, approve: true }))} />
               <Button testID={`reject-claim-${i}`} label="Reject" variant="ghost" style={styles.small} disabled={busy === c.claimId} onPress={() => deviceId && void run(c.claimId, () => review({ deviceId, claimId: c.claimId, approve: false }))} />
-            </View>
+            </View> : <Text style={styles.meta}>Waiting for a teammate with a verified email at the company&apos;s domain</Text>}
           </View>
         ))}
       </Card>
