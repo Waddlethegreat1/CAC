@@ -7,6 +7,7 @@ build:
     profiles:
         development:
             ios:
+                app_id: b0a5354c-a6a6-47b9-8a87-20d2fab74b49
                 setup_commands:
                     - cd .. && pnpm install
                     - if [ ! -d ios ]; then npx expo prebuild --platform ios --no-install; fi
@@ -22,6 +23,7 @@ build:
                 output_path: android/app/build/outputs/apk/debug/app-debug.apk
         preview:
             ios:
+                app_id: b0a5354c-a6a6-47b9-8a87-20d2fab74b49
                 setup_commands:
                     - cd .. && pnpm install
                     - if [ ! -d ios ]; then npx expo prebuild --platform ios --no-install; fi
