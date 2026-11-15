@@ -28,12 +28,17 @@ export function resolveAdapter(feed: { source: string; tier?: string }): Adapter
   return ADAPTERS[feed.source] ?? (feed.tier ? TIER_ADAPTERS[feed.tier] : undefined);
 }
 
-export const DEFAULT_FEEDS: { source: string; name: string; url: string; intervalMinutes: number; enabled?: boolean }[] = [
+export const RETIRED_DEFAULT_FEED_URLS = [
+  "https://devpost.com/api/hackathons?status[]=upcoming&status[]=open&challenge_type[]=in-person",
+];
+
+export const DEFAULT_FEEDS: { source: string; name: string; url: string; intervalMinutes: number; enabled?: boolean; tier?: string }[] = [
   {
     source: "devpost",
-    name: "Devpost in-person hackathons",
-    url: "https://devpost.com/api/hackathons?status[]=upcoming&status[]=open&challenge_type[]=in-person",
+    name: "Devpost: in-person open/upcoming (all)",
+    url: "https://devpost.com/api/hackathons?challenge_type[]=in-person&status[]=upcoming&status[]=open",
     intervalMinutes: 360,
+    tier: "feed",
   },
   {
     source: "devpost",

@@ -27,7 +27,7 @@ export const ranked = query({
       .query("events")
       .withIndex("by_start", (q) => q.gte("startTime", now - 60 * DAY).lte("startTime", now + 90 * DAY))
       .take(800);
-    const live = candidates.filter((e) => (e.endTime ?? e.startTime + DEFAULT_DURATION) >= now);
+    const live = candidates.filter((e) => e.hiddenAt === undefined && (e.endTime ?? e.startTime + DEFAULT_DURATION) >= now);
     const filtered = live.filter((e) => {
       switch (filter) {
         case "investors":

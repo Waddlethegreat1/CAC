@@ -52,6 +52,7 @@ import type * as links from "../links.js";
 import type * as normalize_backfill from "../normalize/backfill.js";
 import type * as normalize_dedupe from "../normalize/dedupe.js";
 import type * as normalize_embed from "../normalize/embed.js";
+import type * as normalize_enrich from "../normalize/enrich.js";
 import type * as normalize_geocode from "../normalize/geocode.js";
 import type * as normalize_index from "../normalize/index.js";
 import type * as normalize_reassignEventRefs from "../normalize/reassignEventRefs.js";
@@ -111,6 +112,7 @@ declare const fullApi: ApiFromModules<{
   "normalize/backfill": typeof normalize_backfill;
   "normalize/dedupe": typeof normalize_dedupe;
   "normalize/embed": typeof normalize_embed;
+  "normalize/enrich": typeof normalize_enrich;
   "normalize/geocode": typeof normalize_geocode;
   "normalize/index": typeof normalize_index;
   "normalize/reassignEventRefs": typeof normalize_reassignEventRefs;

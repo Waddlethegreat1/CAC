@@ -32,7 +32,7 @@ export const run = internalMutation({
       const event = await renormalized(ctx, doc);
       const match = await findDuplicate(ctx, event, doc._id);
       if (!match) {
-        await ctx.db.replace(doc._id, eventDoc(event, sourcesOf(doc), doc.rawListingId));
+        await ctx.db.replace(doc._id, { ...eventDoc(event, sourcesOf(doc), doc.rawListingId), hiddenAt: doc.hiddenAt });
         continue;
       }
       const [keep, drop] = match._creationTime <= doc._creationTime ? [match, { ...doc, ...event }] : [{ ...doc, ...event }, match];

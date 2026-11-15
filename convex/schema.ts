@@ -52,6 +52,14 @@ export const eventFields = {
 
 export const normalizedEvent = v.object(eventFields);
 
+export const eventPlace = v.object({
+  venue: v.optional(v.string()),
+  address: v.optional(v.string()),
+  lat: v.optional(v.number()),
+  lng: v.optional(v.number()),
+  city: v.string(),
+});
+
 export const eventSource = v.object({ url: v.string(), source: v.string(), sourceId: v.string() });
 
 export default defineSchema({
@@ -99,7 +107,10 @@ export default defineSchema({
     sourceId: v.string(),
     raw: rawEvent,
     fetchedAt: v.number(),
-  }).index("by_source_sourceId", ["source", "sourceId"]),
+    missingSince: v.optional(v.number()),
+  })
+    .index("by_source_sourceId", ["source", "sourceId"])
+    .index("by_feed_missing_fetchedAt", ["feedId", "missingSince", "fetchedAt"]),
 
   events: defineTable({
     ...eventFields,
@@ -110,6 +121,7 @@ export default defineSchema({
     dedupeKey: v.optional(v.string()),
     sources: v.optional(v.array(eventSource)),
     synthetic: v.optional(v.boolean()),
+    hiddenAt: v.optional(v.number()),
   })
     .index("by_start", ["startTime"])
     .index("by_dedupeKey", ["dedupeKey"])
@@ -119,6 +131,15 @@ export default defineSchema({
       searchField: "title",
       filterFields: ["city", "eventType", "source"],
     }),
+
+  event_pages: defineTable({
+    url: v.string(),
+    status: v.union(v.literal("found"), v.literal("none"), v.literal("error")),
+    place: v.optional(eventPlace),
+    outsideBayArea: v.optional(v.boolean()),
+    error: v.optional(v.string()),
+    fetchedAt: v.number(),
+  }).index("by_url", ["url"]),
 
   geocode_cache: defineTable({
     key: v.string(),
