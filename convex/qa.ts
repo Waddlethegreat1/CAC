@@ -22,7 +22,7 @@ export const report = internalQuery({
   handler: async (ctx, { now = Date.now(), looseMin = 0.7 }) => {
     const feeds = await ctx.db.query("feeds").collect();
     const feedById = new Map(feeds.map((f) => [f._id, f]));
-    const all = (await ctx.db.query("events").collect()).filter((e) => !DEMO_SOURCES.has(e.source));
+    const all = (await ctx.db.query("events").collect()).filter((e) => !DEMO_SOURCES.has(e.source) && !e.synthetic);
     const upcoming = all.filter((e) => (e.endTime ?? e.startTime + DEFAULT_DURATION) >= now);
 
     const tierOf = new Map<Id<"events">, string>();
