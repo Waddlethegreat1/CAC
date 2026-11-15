@@ -8,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "@/components/button";
 import { AttendanceHistory } from "@/components/attendance";
 import { DetailsFields, affiliationLabel, contactErrorOf, contactOf } from "@/components/details-fields";
+import { checkProfessional, ProfessionalFields, professionalErrorOf, professionalOf, type Professional } from "@/components/professional-fields";
 import { Icon } from "@/components/icon";
 import { Segmented } from "@/components/segmented";
 import { SelectChip } from "@/components/select-chip";
@@ -55,6 +56,8 @@ function ProfileForm({ user }: { user: User }) {
   const [editingDetails, setEditingDetails] = useState(false);
   const [details, setDetails] = useState<Contact>(contactOf(user));
   const [detailErrors, setDetailErrors] = useState<Partial<Contact>>({});
+  const [professional, setProfessional] = useState<Professional>(professionalOf(user));
+  const [professionalErrors, setProfessionalErrors] = useState<Partial<Professional>>({});
   const [areaOpen, setAreaOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +74,7 @@ function ProfileForm({ user }: { user: User }) {
     noticeTimer.current = setTimeout(() => setNotice(null), 2500);
   };
 
-  const save = async (patch: Partial<{ role: Role; interests: string[]; radiusKm: number } & Place & Contact>, done: string) => {
+  const save = async (patch: Partial<{ role: Role; interests: string[]; radiusKm: number } & Place & Contact & Professional>, done: string) => {
     setError(null);
     try {
       await upsert({
@@ -87,9 +90,11 @@ function ProfileForm({ user }: { user: User }) {
       flash(done);
       return true;
     } catch (e) {
-      const fieldError = contactErrorOf(e);
+      const proError = professionalErrorOf(e);
+      const fieldError = proError ? null : contactErrorOf(e);
+      if (proError) setProfessionalErrors(proError);
       if (fieldError) setDetailErrors(fieldError);
-      setError(fieldError ? "Check the highlighted details" : "Couldn't save: no connection. Try again");
+      setError(fieldError || proError ? "Check the highlighted details" : "Couldn't save: no connection. Try again");
       return false;
     }
   };
@@ -103,11 +108,13 @@ function ProfileForm({ user }: { user: User }) {
 
   const saveDetails = async () => {
     const checked = checkContact(details);
-    if ("errors" in checked) {
-      setDetailErrors(checked.errors);
+    const pro = user.role === "student" ? checkProfessional(professional) : null;
+    if ("errors" in checked || (pro && "errors" in pro)) {
+      if ("errors" in checked) setDetailErrors(checked.errors);
+      if (pro && "errors" in pro) setProfessionalErrors(pro.errors);
       return setError("Check the highlighted details");
     }
-    if (await save(checked.values, "Details saved")) setEditingDetails(false);
+    if (await save({ ...checked.values, ...(pro && "values" in pro ? pro.values : {}) }, "Details saved")) setEditingDetails(false);
   };
 
   const detailRows = [
@@ -116,6 +123,7 @@ function ProfileForm({ user }: { user: User }) {
     { label: "Phone", value: user.phone },
     { label: affiliationLabel(user.role), value: user.affiliation },
     { label: "LinkedIn", value: user.linkedin?.replace(/^https:\/\/www\./, "") },
+    ...(user.role === "student" ? [{ label: "Prior roles", value: user.priorRoles }, { label: "Experience", value: user.experience }] : []),
   ];
 
   const signOutHere = async () => {
@@ -173,6 +181,18 @@ function ProfileForm({ user }: { user: User }) {
               setDetailErrors((cur) => ({ ...cur, [field]: undefined }));
             }}
           />
+          {user.role === "student" ? (
+            <ProfessionalFields
+              value={professional}
+              errors={professionalErrors}
+              testIDPrefix="profile-details"
+              onChange={(field, text) => {
+                setError(null);
+                setProfessional((cur) => ({ ...cur, [field]: text }));
+                setProfessionalErrors((cur) => ({ ...cur, [field]: undefined }));
+              }}
+            />
+          ) : null}
           <View style={styles.row}>
             <Button
               variant="ghost"
@@ -181,6 +201,8 @@ function ProfileForm({ user }: { user: User }) {
               onPress={() => {
                 setDetails(contactOf(user));
                 setDetailErrors({});
+                setProfessional(professionalOf(user));
+                setProfessionalErrors({});
                 setEditingDetails(false);
                 setError(null);
               }}
@@ -200,7 +222,7 @@ function ProfileForm({ user }: { user: User }) {
               </View>
             ))}
           </View>
-          <Text style={styles.privacy}>Only you can see your email, phone, and LinkedIn</Text>
+          <Text style={styles.privacy}>Only you can see your email, phone, and LinkedIn, unless you choose to share them with a company you&apos;ve connected with</Text>
           <Button
             testID="edit-details"
             variant="outline"
@@ -209,6 +231,8 @@ function ProfileForm({ user }: { user: User }) {
             onPress={() => {
               setDetails(contactOf(user));
               setDetailErrors({});
+              setProfessional(professionalOf(user));
+              setProfessionalErrors({});
               setEditingDetails(true);
             }}
           />

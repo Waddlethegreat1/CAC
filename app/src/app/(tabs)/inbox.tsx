@@ -76,7 +76,7 @@ export default function InboxScreen() {
                 <VerificationBadge company={c.company} />
               </View>
               <Card>
-                {c[bucket].map((conn, i) => <CompanyRow key={conn._id} connection={conn} bucket={bucket} first={i === 0} />)}
+                {c[bucket].map((conn, i) => <CompanyRow key={conn._id} companyId={c.company._id} connection={conn} bucket={bucket} first={i === 0} />)}
               </Card>
             </View>
           ))}
@@ -162,11 +162,14 @@ function TalentRow({ connection, bucket, first }: { connection: TalentConnection
   );
 }
 
-function CompanyRow({ connection, bucket, first }: { connection: CompanyConnection; bucket: Bucket; first: boolean }) {
+function CompanyRow({ companyId, connection, bucket, first }: { companyId: Id<"companies">; connection: CompanyConnection; bucket: Bucket; first: boolean }) {
   const name = connection.talent.name ?? "Talent";
   return (
     <View testID={`company-connection-${connection._id}`} style={[styles.row, !first && styles.divider]}>
-      <Text style={styles.title}>{name}</Text>
+      <Pressable testID={`profile-${connection._id}`} accessibilityRole="button" accessibilityLabel={`View ${name}'s profile`} onPress={() => router.push({ pathname: "/company/[id]/profile/[userId]", params: { id: companyId, userId: connection.talent.userId } })} style={styles.inline}>
+        <Text style={[styles.title, { flex: 1 }]}>{name}</Text>
+        <Icon name="chevron-right" size={16} color={colors.subtle} />
+      </Pressable>
       <Context connection={connection} bucket={bucket} />
       {bucket === "connected" ? (
         <Text style={styles.meta}>{connection.contact ? "Contact details shared" : "Contact details not shared"}</Text>

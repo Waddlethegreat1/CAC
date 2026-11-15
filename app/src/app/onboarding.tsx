@@ -8,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Brand } from "@/components/brand";
 import { Button } from "@/components/button";
 import { DetailsFields, contactErrorOf, contactOf } from "@/components/details-fields";
+import { checkProfessional, ProfessionalFields, professionalErrorOf, professionalOf, type Professional } from "@/components/professional-fields";
 import { Icon, type IconName } from "@/components/icon";
 import { PasswordField } from "@/components/password-field";
 import { Segmented } from "@/components/segmented";
@@ -41,6 +42,8 @@ function OnboardingForm({ deviceId, existing }: { deviceId: string; existing: Do
   const [interests, setInterests] = useState<string[]>(existing?.interests ?? []);
   const [contact, setContact] = useState<Contact>(contactOf(existing));
   const [contactErrors, setContactErrors] = useState<Partial<Contact>>({});
+  const [professional, setProfessional] = useState<Professional>(professionalOf(existing));
+  const [professionalErrors, setProfessionalErrors] = useState<Partial<Professional>>({});
   const { isAuthenticated } = useConvexAuth();
   const { signIn } = useAuthActions();
   const needsAccount = !isAuthenticated;
@@ -71,6 +74,12 @@ function OnboardingForm({ deviceId, existing }: { deviceId: string; existing: Do
     setError(null);
     setContact((cur) => ({ ...cur, [field]: text }));
     setContactErrors((cur) => ({ ...cur, [field]: undefined }));
+  };
+
+  const editProfessional = (field: keyof Professional, text: string) => {
+    setError(null);
+    setProfessional((cur) => ({ ...cur, [field]: text }));
+    setProfessionalErrors((cur) => ({ ...cur, [field]: undefined }));
   };
 
   const editPassword = (field: keyof PasswordErrors, text: string) => {
@@ -104,16 +113,19 @@ function OnboardingForm({ deviceId, existing }: { deviceId: string; existing: Do
 
   const finish = async () => {
     const checked = checkContact(contact);
-    if (!role || !place || "errors" in checked) return;
+    const pro = checkProfessional(professional);
+    if (!role || !place || "errors" in checked || "errors" in pro) return;
     setSaving(true);
     try {
-      await upsert({ deviceId, role, interests, ...place, radiusKm, ...checked.values });
+      await upsert({ deviceId, role, interests, ...place, radiusKm, ...checked.values, ...(role === "student" ? pro.values : {}) });
       if (needsAccount && !(await createAccount(checked.values.email))) return;
       router.replace("/feed");
     } catch (e) {
-      const fieldError = contactErrorOf(e);
-      if (!fieldError) return setError("Couldn't save your profile: no connection. Try again");
-      setContactErrors(fieldError);
+      const proError = professionalErrorOf(e);
+      const fieldError = proError ? null : contactErrorOf(e);
+      if (!fieldError && !proError) return setError("Couldn't save your profile: no connection. Try again");
+      if (proError) setProfessionalErrors(proError);
+      else if (fieldError) setContactErrors(fieldError);
       setStep(1);
       setError("Check the highlighted details");
     } finally {
@@ -130,6 +142,11 @@ function OnboardingForm({ deviceId, existing }: { deviceId: string; existing: Do
         return setError("Check the highlighted details");
       }
       setContact(checked.values);
+      const pro = role === "student" ? checkProfessional(professional) : null;
+      if (pro && "errors" in pro) {
+        setProfessionalErrors(pro.errors);
+        return setError("Check the highlighted details");
+      }
       const pwErrors = needsAccount ? checkPassword(password, confirm) : {};
       if (pwErrors.password || pwErrors.confirm) {
         setPasswordErrors(pwErrors);
@@ -204,6 +221,7 @@ function OnboardingForm({ deviceId, existing }: { deviceId: string; existing: Do
                   : "Tell us who you are. Your email and phone stay private to you"}
               </Text>
               <DetailsFields role={role} value={contact} errors={contactErrors} onChange={editContact} testIDPrefix="details" />
+              {role === "student" ? <ProfessionalFields value={professional} errors={professionalErrors} onChange={editProfessional} testIDPrefix="details" /> : null}
               {needsAccount ? (
                 <>
                   <Text style={styles.section}>Create a password</Text>
