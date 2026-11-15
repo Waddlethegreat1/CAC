@@ -37,6 +37,7 @@ import type * as ingest from "../ingest.js";
 import type * as interests from "../interests.js";
 import type * as investor from "../investor.js";
 import type * as lib_adapter from "../lib/adapter.js";
+import type * as lib_contact from "../lib/contact.js";
 import type * as lib_fixtures from "../lib/fixtures.js";
 import type * as lib_geo from "../lib/geo.js";
 import type * as lib_http from "../lib/http.js";
@@ -97,6 +98,7 @@ declare const fullApi: ApiFromModules<{
   interests: typeof interests;
   investor: typeof investor;
   "lib/adapter": typeof lib_adapter;
+  "lib/contact": typeof lib_contact;
   "lib/fixtures": typeof lib_fixtures;
   "lib/geo": typeof lib_geo;
   "lib/http": typeof lib_http;

@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery } from "convex/react";
+import * as Crypto from "expo-crypto";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 
 import { api } from "@/convex/_generated/api";
@@ -19,7 +20,7 @@ export const radiusLabel = (km: number) =>
 
 const DeviceContext = createContext<string | null>(null);
 
-const newId = () => `dev_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+const newId = () => `dev_${Crypto.randomUUID()}`;
 
 export function DeviceProvider({ children }: { children: ReactNode }) {
   const [deviceId, setDeviceId] = useState<string | null>(null);
@@ -46,7 +47,7 @@ export function useSearchRadius() {
     async (km: number) => {
       setDraft(km);
       if (!user) return;
-      const { _id, _creationTime, updatedAt, ...profile } = user;
+      const { _id, _creationTime, updatedAt, name, email, phone, affiliation, linkedin, ...profile } = user;
       await upsert({ ...profile, radiusKm: km });
     },
     [user, upsert],
