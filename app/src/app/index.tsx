@@ -1,7 +1,8 @@
 import { useQuery } from "convex/react";
 import { Redirect } from "expo-router";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
+import { Brand } from "@/components/brand";
 import { colors } from "@/constants/theme";
 import { api } from "@/convex/_generated/api";
 import { useDeviceId } from "@/lib/device";
@@ -13,8 +14,8 @@ export default function Index() {
   if (!deviceId || profile === undefined) {
     return (
       <View style={styles.center}>
-        <Text style={styles.logo}>Scout</Text>
-        <ActivityIndicator color={colors.accent} />
+        <Brand size={36} />
+        <ActivityIndicator color={colors.ember} />
       </View>
     );
   }
@@ -22,6 +23,5 @@ export default function Index() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16, backgroundColor: colors.bg },
-  logo: { fontSize: 40, fontWeight: "900", color: colors.ink, letterSpacing: -1 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 20, backgroundColor: colors.bg },
 });
