@@ -1,33 +1,47 @@
+import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
 
-import { colors, radius } from "@/constants/theme";
+import { colors, layout, radius } from "@/constants/theme";
 
-type Props = { label: string; selected?: boolean; onPress?: () => void; testID?: string };
+type Props = {
+  label: string;
+  selected?: boolean;
+  onPress?: () => void;
+  testID?: string;
+  size?: "filter" | "interest";
+  icon?: ReactNode;
+};
 
-export function Chip({ label, selected, onPress, testID }: Props) {
+export function Chip({ label, selected, onPress, testID, size = "interest", icon }: Props) {
   return (
     <Pressable
       testID={testID}
       accessibilityRole="button"
       accessibilityState={{ selected }}
       onPress={onPress}
-      style={({ pressed }) => [styles.chip, selected && styles.selected, pressed && { opacity: 0.7 }]}
+      hitSlop={size === "filter" ? 5 : 2}
+      style={({ pressed }) => [styles.chip, size === "filter" ? styles.filter : styles.interest, selected && styles.selected, pressed && { opacity: 0.7 }]}
     >
-      <Text style={[styles.label, selected && styles.selectedLabel]}>{label}</Text>
+      {icon}
+      <Text style={[styles.label, size === "filter" && styles.filterLabel, selected && styles.selectedLabel]}>{label}</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     borderRadius: radius.pill,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.faint,
+    backgroundColor: colors.surface,
+    borderWidth: 0.5,
+    borderColor: colors.lineStrong,
   },
-  selected: { backgroundColor: colors.ink, borderColor: colors.ink },
-  label: { fontSize: 14, fontWeight: "600", color: colors.ink },
-  selectedLabel: { color: colors.white },
+  interest: { height: layout.interestChipHeight, paddingHorizontal: 14 },
+  filter: { height: layout.filterChipHeight, paddingHorizontal: 12 },
+  selected: { backgroundColor: colors.emberSoft, borderColor: colors.ember, borderWidth: 1 },
+  label: { fontSize: 14, color: colors.ink },
+  filterLabel: { fontSize: 13 },
+  selectedLabel: { color: colors.emberInk, fontWeight: "500" },
 });
