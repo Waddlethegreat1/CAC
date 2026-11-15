@@ -13,7 +13,7 @@ convex/
   adapters/<source>.ts  one file per source (devpost, luma)
   normalize/            RawEvent -> events row: geo, Bay Area filter, rules tagger
   lib/tagger.ts         rules-based tags, event type, audience, investor score (Enricher seam for LLM tagging)
-  ingest.ts             runDue / runFeed actions, store + fetch_log mutations
+  ingest.ts             runDue (claims due feeds) / runFeed (dispatch via adapters/index.ts registry), store + fetch_log mutations
   feed.ts               ranked feed query
   crons.ts              due feeds every 30 min, daily demo seed refresh
   seed.ts               22 realistic Bay Area events so the feed is never empty

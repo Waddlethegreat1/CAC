@@ -2,14 +2,17 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
-import { ADAPTERS } from "./adapters";
-import { basicHttp } from "./lib/http";
+import { resolveAdapter } from "./adapters";
+import { selectDueFeeds } from "./feeds";
+import { RobotsDisallowedError, makeHttp } from "./lib/http";
 import { rawEvent } from "./lib/rawEvent";
 import { ensureDefaults, upsertEvent, upsertRawListing } from "./lib/store";
 import { normalize } from "./normalize";
 import { normalizedEvent } from "./schema";
 
 const BATCH = 50;
+const MINUTE = 60_000;
+const fetchStatus = v.union(v.literal("ok"), v.literal("error"), v.literal("skipped_robots"));
 
 export const ensureFeeds = internalMutation({
   args: {},
@@ -23,11 +26,6 @@ export const ensureFeeds = internalMutation({
 export const getFeed = internalQuery({
   args: { feedId: v.id("feeds") },
   handler: (ctx, { feedId }) => ctx.db.get(feedId),
-});
-
-export const listFeeds = internalQuery({
-  args: {},
-  handler: (ctx) => ctx.db.query("feeds").collect(),
 });
 
 export const store = internalMutation({
@@ -49,7 +47,7 @@ export const logFetch = internalMutation({
   args: {
     feedId: v.id("feeds"),
     startedAt: v.number(),
-    status: v.union(v.literal("ok"), v.literal("error")),
+    status: fetchStatus,
     rawCount: v.number(),
     insertedCount: v.number(),
     error: v.optional(v.string()),
@@ -62,8 +60,8 @@ export const logFetch = internalMutation({
     if (!feed) return null;
     await ctx.db.patch(args.feedId, {
       lastFetchedAt: finishedAt,
-      nextFetchAt: finishedAt + feed.intervalMinutes * 60_000,
-      lastStatus: args.status,
+      nextFetchAt: finishedAt + feed.intervalMinutes * MINUTE,
+      lastStatus: args.status === "ok" ? "ok" : "error",
     });
     return null;
   },
@@ -75,11 +73,15 @@ export const runFeed = internalAction({
   handler: async (ctx, { feedId }): Promise<{ fetched: number; kept: number }> => {
     const feed: Doc<"feeds"> | null = await ctx.runQuery(internal.ingest.getFeed, { feedId });
     if (!feed) throw new Error(`Unknown feed ${feedId}`);
-    const adapter = ADAPTERS[feed.source];
-    if (!adapter) throw new Error(`No adapter for source ${feed.source}`);
     const startedAt = Date.now();
+    const adapter = resolveAdapter(feed);
+    if (!adapter) {
+      const error = `No adapter for source ${feed.source}${feed.tier ? ` or tier ${feed.tier}` : ""}`;
+      await ctx.runMutation(internal.ingest.logFetch, { feedId, startedAt, status: "error", rawCount: 0, insertedCount: 0, error });
+      return { fetched: 0, kept: 0 };
+    }
     try {
-      const raws = await adapter.fetch(feed, basicHttp);
+      const raws = await adapter.fetch(feed, makeHttp(ctx));
       const items = await Promise.all(raws.map(async (raw) => ({ raw, event: await normalize(raw) })));
       for (let i = 0; i < items.length; i += BATCH) {
         await ctx.runMutation(internal.ingest.store, { feedId, items: items.slice(i, i + BATCH) });
@@ -89,22 +91,26 @@ export const runFeed = internalAction({
       return { fetched: raws.length, kept };
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
-      await ctx.runMutation(internal.ingest.logFetch, { feedId, startedAt, status: "error", rawCount: 0, insertedCount: 0, error });
+      const status = err instanceof RobotsDisallowedError ? "skipped_robots" : "error";
+      await ctx.runMutation(internal.ingest.logFetch, { feedId, startedAt, status, rawCount: 0, insertedCount: 0, error });
+      if (status === "skipped_robots") return { fetched: 0, kept: 0 };
       throw err;
     }
   },
 });
 
-export const runDue = internalAction({
-  args: { force: v.optional(v.boolean()) },
+export const runDue = internalMutation({
+  args: { force: v.optional(v.boolean()), limit: v.optional(v.number()) },
   returns: v.array(v.string()),
-  handler: async (ctx, { force }): Promise<string[]> => {
-    await ctx.runMutation(internal.ingest.ensureFeeds, {});
-    const feeds: Doc<"feeds">[] = await ctx.runQuery(internal.ingest.listFeeds, {});
+  handler: async (ctx, { force, limit }) => {
+    if (force) await ensureDefaults(ctx);
     const now = Date.now();
-    const due = feeds.filter((f) => f.enabled && (force || (f.lastFetchedAt ?? 0) + f.intervalMinutes * 60_000 <= now));
-    for (const [i, feed] of due.entries()) {
-      await ctx.scheduler.runAfter(i * 2000, internal.ingest.runFeed, { feedId: feed._id });
+    const due = force
+      ? (await ctx.db.query("feeds").collect()).filter((f) => f.enabled)
+      : await selectDueFeeds(ctx, now, limit);
+    for (const feed of due) {
+      await ctx.db.patch(feed._id, { nextFetchAt: now + feed.intervalMinutes * MINUTE });
+      await ctx.scheduler.runAfter(0, internal.ingest.runFeed, { feedId: feed._id });
     }
     return due.map((f) => f.name);
   },
