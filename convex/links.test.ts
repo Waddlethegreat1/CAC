@@ -46,6 +46,9 @@ beforeEach(() => {
     if (url.endsWith("/robots.txt")) {
       return robots[url] === undefined ? new Response("", { status: 404 }) : new Response(robots[url]);
     }
+    if (url === "https://model.test/v1/chat/completions") {
+      return new Response(JSON.stringify({ choices: [{ message: { content: '{"events": []}' } }] }));
+    }
     if (redirects[url]) return new Response(null, { status: 302, headers: { Location: redirects[url] } });
     const body = pages[url];
     return body === undefined ? new Response("not found", { status: 404 }) : new Response(body);
@@ -133,10 +136,14 @@ describe("links.submit", () => {
     expect(result).toMatchObject({ status: "rejected", reason: "No upcoming Bay Area events matched this link" });
   }, 20_000);
 
-  test("a page with no event data needs review while the extraction tier is not registered", async () => {
+  test("a page with no event data goes through the extraction tier and needs review when the model finds none", async () => {
+    vi.stubEnv("MODEL_BASE_URL", "https://model.test/v1");
+    vi.stubEnv("MODEL_API_KEY", "test-key");
     const t = await setup();
     const result = await t.action(api.links.submit, { deviceId, url: "https://example.com/about" });
+    vi.unstubAllEnvs();
     expect(result).toEqual({ status: "needs_review", eventIds: [], reason: "No event details found on the page" });
+    expect(requests.map((r) => r.url)).toContain("https://model.test/v1/chat/completions");
   }, 20_000);
 
   test("robots.txt disallow rejects the link without fetching the page", async () => {
