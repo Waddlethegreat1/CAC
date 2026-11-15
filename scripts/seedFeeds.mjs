@@ -75,6 +75,14 @@ function toFeed(entry) {
   };
 }
 
+const LOCALIST_GROUP_ICS = {
+  "events.stanford.edu/37955605855836":
+    "https://events.stanford.edu/group/asia-pacific_students_entrepreneurial_society/calendar.ics",
+  "events.stanford.edu/37955606196886":
+    "https://events.stanford.edu/group/business_association_of_stanford_entrepreneurial_students/calendar.ics",
+  "calendar.ucsf.edu/9920": "https://calendar.ucsf.edu/group/entrepreneurship_center/calendar.ics",
+};
+
 function applyTerms(entry, feed) {
   const platform = entry.source_platform ?? feed.source;
   const host = new URL(feed.url).host;
@@ -87,8 +95,12 @@ function applyTerms(entry, feed) {
     return { ...feed, enabled: false, why: "eventbrite needs an API token" };
   }
   if (host === "calendar.google.com") return { ...feed, enabled: false, why: "google calendar robots.txt disallows all" };
-  if (feed.source === "localist" && !new URL(feed.url).searchParams.has("group_id")) {
-    return { ...feed, enabled: false, why: "localist filter other than group_id is ignored by the API" };
+  if (feed.source === "localist") {
+    const groupId = new URL(feed.url).searchParams.get("group_id");
+    if (!groupId) return { ...feed, enabled: false, why: "localist filter other than group_id is ignored by the API" };
+    const ics = LOCALIST_GROUP_ICS[`${host}/${groupId}`];
+    if (!ics) return { ...feed, enabled: false, why: "localist group without a known calendar.ics" };
+    return { ...feed, source: "ical", url: ics, tier: "feed", why: "localist group moved to its calendar.ics" };
   }
   return feed;
 }
