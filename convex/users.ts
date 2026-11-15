@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { CONTACT_FIELDS, checkContactField } from "./lib/contact";
+import { PROFILE_FIELDS, checkProfileField } from "./lib/profile";
 import { role } from "./schema";
 
 export const get = query({
@@ -27,6 +28,8 @@ export const upsert = mutation({
     phone: v.optional(v.string()),
     affiliation: v.optional(v.string()),
     linkedin: v.optional(v.string()),
+    priorRoles: v.optional(v.string()),
+    experience: v.optional(v.string()),
   },
   returns: v.id("users"),
   handler: async (ctx, args) => {
@@ -42,6 +45,16 @@ export const upsert = mutation({
         continue;
       }
       const result = checkContactField(field, raw);
+      if ("error" in result) throw new ConvexError({ field, message: result.error });
+      doc[field] = result.value || undefined;
+    }
+    for (const field of PROFILE_FIELDS) {
+      const raw = args[field];
+      if (raw === undefined) {
+        doc[field] = existing?.[field];
+        continue;
+      }
+      const result = checkProfileField(field, raw);
       if ("error" in result) throw new ConvexError({ field, message: result.error });
       doc[field] = result.value || undefined;
     }

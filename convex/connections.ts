@@ -5,7 +5,7 @@ import { ended } from "./attendanceModel";
 import { callerFor, requireCaller } from "./lib/identity";
 import {
   blockedUntil, COMPANY_DAILY_LIMIT, companyRole, companyView, connectionSide, connectionStatus, DAY, eventSummary, fail,
-  hosts, isLive, isMember, MAX_DISCOVER_EVENTS, MAX_EVENT_TALENT, MAX_INBOX, MAX_MEMBERSHIPS, MAX_MESSAGE, MAX_ROWS, cleanText, nullableStatus, pairRows, requireEligible, requireMember, sharedContact,
+  hosts, isLive, isMember, MAX_DISCOVER_EVENTS, MAX_EVENT_TALENT, MAX_INBOX, MAX_MEMBERSHIPS, MAX_MESSAGE, MAX_ROWS, cleanText, nullableStatus, pairRows, requireEligible, requireMember, requireVerified, sharedContact,
   sideOf, TALENT_DAILY_LIMIT, talentView, toCompany, toContact, toEvent, toTalent, wentTo, type Side,
 } from "./lib/connections";
 import { nextMessageTime } from "./chat";
@@ -66,7 +66,7 @@ export const expressInterest = mutation({
   returns: initiateResult,
   handler: async (ctx, { deviceId, companyId, eventId, message }) => {
     const user = await requireCaller(ctx, deviceId);
-    if (!await ctx.db.get(companyId)) fail("not_found", "Company not found");
+    await requireVerified(ctx, companyId);
     await requireEligible(ctx, user, companyId, eventId);
     return initiate(ctx, "talent", user, companyId, eventId, user, message);
   },
@@ -78,6 +78,7 @@ export const expressInterestInTalent = mutation({
   handler: async (ctx, { deviceId, companyId, talentUserId, eventId, message }) => {
     const user = await requireCaller(ctx, deviceId);
     await requireMember(ctx, companyId, user._id);
+    await requireVerified(ctx, companyId);
     const talent = await ctx.db.get(talentUserId);
     if (!talent) return fail("not_found", "Talent not found");
     await requireEligible(ctx, talent, companyId, eventId);
@@ -101,6 +102,7 @@ export const respond = mutation({
     const now = Date.now();
     if (connection.status === "pending") {
       if (connection.initiatedBy === side) fail("forbidden", "Wait for the other side to respond, or withdraw instead");
+      await requireVerified(ctx, connection.companyId);
       const status = accept ? "accepted" as const : "declined" as const;
       await ctx.db.patch(connectionId, { status, respondedAt: now, ...(accept ? {} : { declinedBy: side }) });
       return { status };
@@ -201,7 +203,7 @@ export const discover = query({
       const companies = [];
       for (const link of links) {
         const company = await ctx.db.get(link.companyId);
-        if (!company) continue;
+        if (!company || company.verifiedAt === undefined) continue;
         const rows = await pairRows(ctx, user._id, company._id);
         const latest = rows.find(isLive) ?? rows.sort((a, b) => b.createdAt - a.createdAt)[0];
         companies.push({ company: toCompany(company), connectionStatus: latest?.status ?? null, blockedUntil: blockedUntil(rows, "talent", now) });
@@ -218,6 +220,7 @@ export const eventTalent = query({
   handler: async (ctx, { deviceId, companyId, eventId }) => {
     const user = await requireCaller(ctx, deviceId);
     await requireMember(ctx, companyId, user._id);
+    await requireVerified(ctx, companyId);
     const event = await ctx.db.get(eventId);
     const now = Date.now();
     if (!event || !ended(event, now) || !await hosts(ctx, companyId, eventId)) return [];
@@ -232,5 +235,44 @@ export const eventTalent = query({
       out.push({ talent: toTalent(person), connectionStatus: latest?.status ?? null, blockedUntil: blockedUntil(rows, "company", now) });
     }
     return out;
+  },
+});
+
+export const talentProfile = query({
+  args: { deviceId: v.string(), companyId: v.id("companies"), talentUserId: v.id("users") },
+  returns: v.object({
+    talent: v.object({
+      ...talentView.fields,
+      affiliation: v.union(v.string(), v.null()),
+      priorRoles: v.union(v.string(), v.null()),
+      experience: v.union(v.string(), v.null()),
+    }),
+    sharedEvents: v.array(eventSummary),
+    connection: v.union(v.null(), v.object({ _id: v.id("connections"), status: connectionStatus, initiatedBy: connectionSide, shareContact: v.boolean() })),
+    contact: v.union(sharedContact, v.null()),
+  }),
+  handler: async (ctx, { deviceId, companyId, talentUserId }) => {
+    const user = await requireCaller(ctx, deviceId);
+    await requireMember(ctx, companyId, user._id);
+    await requireVerified(ctx, companyId);
+    const talent = await ctx.db.get(talentUserId);
+    if (!talent || talent.role !== "student" || await isMember(ctx, companyId, talentUserId)) return fail("not_found", "Talent not found");
+    const now = Date.now();
+    const links = await ctx.db.query("event_hosts").withIndex("by_company", (q) => q.eq("companyId", companyId)).take(MAX_ROWS);
+    const sharedEvents = [];
+    for (const link of links) {
+      const event = await ctx.db.get(link.eventId);
+      if (!event || !ended(event, now)) continue;
+      const record = await ctx.db.query("attendance").withIndex("by_user_event", (q) => q.eq("userId", talentUserId).eq("eventId", event._id)).unique();
+      if (wentTo(record, event)) sharedEvents.push(event);
+    }
+    const live = (await pairRows(ctx, talentUserId, companyId)).find(isLive) ?? null;
+    if (!sharedEvents.length && !live) return fail("not_found", "Talent not found");
+    return {
+      talent: { ...toTalent(talent), affiliation: talent.affiliation ?? null, priorRoles: talent.priorRoles ?? null, experience: talent.experience ?? null },
+      sharedEvents: sharedEvents.sort((a, b) => b.startTime - a.startTime).map(toEvent),
+      connection: live ? { _id: live._id, status: live.status, initiatedBy: live.initiatedBy, shareContact: live.shareContact } : null,
+      contact: live?.status === "accepted" && live.shareContact ? toContact(talent) : null,
+    };
   },
 });

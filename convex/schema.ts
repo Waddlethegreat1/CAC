@@ -169,6 +169,8 @@ export default defineSchema({
     phone: v.optional(v.string()),
     affiliation: v.optional(v.string()),
     linkedin: v.optional(v.string()),
+    priorRoles: v.optional(v.string()),
+    experience: v.optional(v.string()),
   }).index("by_device", ["deviceId"]),
 
   interests: defineTable({
@@ -230,6 +232,8 @@ export default defineSchema({
     website: v.optional(v.string()),
     logo: v.optional(v.string()),
     createdAt: v.number(),
+    verifiedAt: v.optional(v.number()),
+    verifiedBy: v.optional(v.string()),
   }).index("by_slug", ["slug"]),
 
   company_members: defineTable({

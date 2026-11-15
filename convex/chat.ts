@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { requireCaller } from "./lib/identity";
-import { cleanText, fail, MAX_BODY, sideOf } from "./lib/connections";
+import { cleanText, fail, MAX_BODY, requireVerified, sideOf } from "./lib/connections";
 
 const DEFAULT_PAGE = 50;
 const MAX_PAGE = 100;
@@ -25,7 +25,8 @@ export const send = mutation({
   args: { deviceId: v.string(), connectionId: v.id("connections"), body: v.string() },
   returns: v.id("messages"),
   handler: async (ctx, { deviceId, connectionId, body }) => {
-    const { user } = await openChat(ctx, deviceId, connectionId);
+    const { user, connection } = await openChat(ctx, deviceId, connectionId);
+    await requireVerified(ctx, connection.companyId);
     const text = cleanText(body, MAX_BODY, "Message");
     if (!text) return fail("invalid", "Message is empty");
     return ctx.db.insert("messages", { connectionId, senderUserId: user._id, body: text, createdAt: await nextMessageTime(ctx, connectionId) });

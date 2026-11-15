@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { deleteEventRefs, reassignEventRefs } from "./normalize/reassignEventRefs";
 import schema from "./schema";
@@ -46,11 +46,13 @@ async function setup() {
   await attend(tal2, past, { going: false, attended: true });
   await attend(lazy, past, { attended: false });
   const acme = await t.mutation(api.companies.create, { deviceId: "own-device", name: "Acme Labs", website: "acme.dev" });
+  await t.mutation(internal.companies.verify, { slug: "Acme Labs", by: "test-admin" });
   await t.mutation(api.companies.invite, { deviceId: "own-device", companyId: acme, email: "mem-device@example.com" });
   await t.mutation(api.companies.respondInvite, { deviceId: "mem-device", companyId: acme, accept: true });
   await t.mutation(api.companies.claimEvent, { deviceId: "mem-device", companyId: acme, eventId: past });
   await t.mutation(api.companies.claimEvent, { deviceId: "own-device", companyId: acme, eventId: future });
   const other2 = await t.mutation(api.companies.create, { deviceId: "out-device", name: "Other Org" });
+  await t.mutation(internal.companies.verify, { companyId: other2, by: "test-admin" });
   await t.mutation(api.companies.claimEvent, { deviceId: "out-device", companyId: other2, eventId: other });
   vi.setSystemTime(NOW);
   return { t, tal, tal2, lazy, own, mem, out, past, future, other, acme, other2 };
@@ -116,7 +118,10 @@ describe("eligibility", () => {
   test("a going record created after the event ended does not make talent eligible", async () => {
     const { t, acme, past, out } = await setup();
     await t.mutation(api.users.upsert, { deviceId: "late-device", role: "student", interests: [], city: "SF", lat: 0, lng: 0, locationSource: "city", name: "Late" });
-    await t.mutation(api.attendance.setGoing, { deviceId: "late-device", eventId: past, going: true });
+    await t.run(async (ctx) => {
+      const late = (await ctx.db.query("users").withIndex("by_device", (q) => q.eq("deviceId", "late-device")).unique())!;
+      await ctx.db.insert("attendance", { userId: late._id, eventId: past, going: true });
+    });
     expect(await code(t.mutation(api.connections.expressInterest, { deviceId: "late-device", companyId: acme, eventId: past }))).toBe("not_eligible");
     expect((await t.query(api.connections.eventTalent, { deviceId: "own-device", companyId: acme, eventId: past })).map((r) => r.talent.name)).not.toContain("Late");
     expect(out).toBeDefined();
@@ -178,7 +183,7 @@ describe("interest and invitations", () => {
     const companies = await t.run(async (ctx) => {
       const ids = [];
       for (let i = 0; i < 21; i++) {
-        const companyId = await ctx.db.insert("companies", { name: `Host ${i}`, slug: `host-${i}`, createdAt: NOW });
+        const companyId = await ctx.db.insert("companies", { name: `Host ${i}`, slug: `host-${i}`, createdAt: NOW, verifiedAt: NOW, verifiedBy: "test-admin" });
         await ctx.db.insert("event_hosts", { eventId: past, companyId, claimedBy: own, createdAt: NOW });
         ids.push(companyId);
       }
@@ -260,6 +265,140 @@ describe("privacy", () => {
     const shared = (await t.query(api.connections.inbox, { deviceId: "mem-device" })).companies[0].connected[0];
     expect(shared.contact).toEqual({ email: "tal.private@stanford.edu", phone: "+14155550100", linkedin: "https://www.linkedin.com/in/tal-private", affiliation: "Secret Labs" });
     expect(JSON.stringify(await t.query(api.connections.inbox, { deviceId: "tal-device" }))).not.toMatch(/example\.com|own-device|mem-device/);
+  });
+});
+
+describe("professional profile", () => {
+  test("users.upsert enforces word and character limits, keeps omitted values and clears on empty string", async () => {
+    const { t, tal } = await setup();
+    const base = { deviceId: "tal-device", role: "student" as const, interests: [], city: "SF", lat: 0, lng: 0, locationSource: "city" as const };
+    const words = (n: number) => Array.from({ length: n }, (_, i) => `w${i}`).join(" ");
+    await t.mutation(api.users.upsert, { ...base, priorRoles: `  ${words(50)} `, experience: `Intern at Acme\r\n\n\n\n${words(97)}` });
+    const stored = await t.run((ctx) => ctx.db.get(tal));
+    expect(stored).toMatchObject({ priorRoles: words(50), experience: `Intern at Acme\n\n${words(97)}`, email: "tal.private@stanford.edu" });
+    for (const [field, value] of [["priorRoles", words(51)], ["experience", words(101)], ["priorRoles", "x".repeat(401)], ["experience", "y".repeat(801)], ["priorRoles", "a\u200bb"]] as const) {
+      await expect(t.mutation(api.users.upsert, { ...base, [field]: value })).rejects.toMatchObject({ data: { field } });
+    }
+    await t.mutation(api.users.upsert, { ...base, name: "Tal Talent" });
+    expect(await t.run((ctx) => ctx.db.get(tal))).toMatchObject({ priorRoles: words(50) });
+    await t.mutation(api.users.upsert, { ...base, priorRoles: "", experience: "  " });
+    const cleared = await t.run((ctx) => ctx.db.get(tal));
+    expect(cleared?.priorRoles).toBeUndefined();
+    expect(cleared?.experience).toBeUndefined();
+  });
+
+  test("talentProfile is for members about eligible or connected talent, with contact gated", async () => {
+    const { t, acme, other2, past, tal, tal2, lazy } = await setup();
+    await t.run((ctx) => ctx.db.patch(tal, { priorRoles: "PM intern", experience: "Two summers at Initech" }));
+    const profile = await t.query(api.connections.talentProfile, { deviceId: "mem-device", companyId: acme, talentUserId: tal });
+    expect(profile).toEqual({
+      talent: { userId: tal, name: "Tal Talent", role: "student", affiliation: "Secret Labs", priorRoles: "PM intern", experience: "Two summers at Initech" },
+      sharedEvents: [{ _id: past, title: "Event past", startTime: NOW - 2 * DAY, endTime: NOW - 2 * DAY + 2 * HOUR }],
+      connection: null, contact: null,
+    });
+    for (const secret of ["tal.private@stanford.edu", "14155550100", "tal-private", "tal-device"]) expect(JSON.stringify(profile)).not.toContain(secret);
+    expect(await code(t.query(api.connections.talentProfile, { deviceId: "tal2-device", companyId: acme, talentUserId: tal }))).toBe("forbidden");
+    expect(await code(t.query(api.connections.talentProfile, { deviceId: "nobody", companyId: acme, talentUserId: tal }))).toBe("not_onboarded");
+    expect(await code(t.query(api.connections.talentProfile, { deviceId: "mem-device", companyId: acme, talentUserId: lazy }))).toBe("not_found");
+    expect(await code(t.query(api.connections.talentProfile, { deviceId: "out-device", companyId: other2, talentUserId: tal2 }))).toBe("not_found");
+
+    const { connectionId } = await t.mutation(api.connections.expressInterest, { deviceId: "tal-device", companyId: acme, eventId: past });
+    await t.mutation(api.connections.setShareContact, { deviceId: "tal-device", connectionId, shareContact: true });
+    expect(await t.query(api.connections.talentProfile, { deviceId: "own-device", companyId: acme, talentUserId: tal })).toMatchObject({ connection: { _id: connectionId, status: "pending", shareContact: true }, contact: null });
+    await t.mutation(api.connections.setShareContact, { deviceId: "tal-device", connectionId, shareContact: false });
+    await t.mutation(api.connections.respond, { deviceId: "own-device", connectionId, accept: true });
+    expect((await t.query(api.connections.talentProfile, { deviceId: "own-device", companyId: acme, talentUserId: tal })).contact).toBeNull();
+    await t.mutation(api.connections.setShareContact, { deviceId: "tal-device", connectionId, shareContact: true });
+    expect((await t.query(api.connections.talentProfile, { deviceId: "own-device", companyId: acme, talentUserId: tal })).contact).toEqual({
+      email: "tal.private@stanford.edu", phone: "+14155550100", linkedin: "https://www.linkedin.com/in/tal-private", affiliation: "Secret Labs",
+    });
+
+    await t.run(async (ctx) => { for (const row of await ctx.db.query("event_hosts").collect()) await ctx.db.delete(row._id); });
+    expect(await t.query(api.connections.talentProfile, { deviceId: "own-device", companyId: acme, talentUserId: tal })).toMatchObject({ sharedEvents: [], connection: { status: "accepted" } });
+  });
+});
+
+describe("claimable events", () => {
+  test("members see unclaimed, unhidden matching events newest first; others are forbidden", async () => {
+    const { t, acme, past, future } = await setup();
+    const [a, b, hidden, organizerOnly, unrelated, ancient] = await t.run(async (ctx) => [
+      await ctx.db.insert("events", event("a", NOW - 5 * DAY, ["acme-labs"])),
+      await ctx.db.insert("events", event("b", NOW + 9 * DAY, ["Friends", "Acme  Labs"])),
+      await ctx.db.insert("events", { ...event("hidden", NOW - DAY, ["Acme Labs"]), hiddenAt: NOW }),
+      await ctx.db.insert("events", event("org", NOW + DAY, [], "ACME LABS")),
+      await ctx.db.insert("events", event("unrelated", NOW, ["Acme"])),
+      await ctx.db.insert("events", event("ancient", NOW - 800 * DAY, ["Acme Labs"])),
+    ]);
+    const list = await t.query(api.companies.claimable, { deviceId: "mem-device", companyId: acme });
+    expect(list.map((e) => e._id)).toEqual([b, organizerOnly, a]);
+    expect(list[0]).toEqual({ _id: b, title: "Event b", startTime: NOW + 9 * DAY, endTime: NOW + 9 * DAY + 2 * HOUR });
+    for (const id of [past, future, hidden, unrelated, ancient]) expect(list.map((e) => e._id)).not.toContain(id);
+    await t.mutation(api.companies.claimEvent, { deviceId: "mem-device", companyId: acme, eventId: b });
+    expect((await t.query(api.companies.claimable, { deviceId: "own-device", companyId: acme })).map((e) => e._id)).toEqual([organizerOnly, a]);
+    expect(await code(t.query(api.companies.claimable, { deviceId: "tal-device", companyId: acme }))).toBe("forbidden");
+    expect(await code(t.query(api.companies.claimable, { deviceId: "nobody", companyId: acme }))).toBe("not_onboarded");
+  });
+
+  test("caps results at 50", async () => {
+    const { t, acme } = await setup();
+    await t.run(async (ctx) => { for (let i = 0; i < 60; i++) await ctx.db.insert("events", event(`bulk-${i}`, NOW - i * HOUR, ["Acme Labs"])); });
+    const list = await t.query(api.companies.claimable, { deviceId: "own-device", companyId: acme });
+    expect(list).toHaveLength(50);
+    expect(list[0].title).toBe("Event bulk-0");
+  });
+});
+
+describe("company verification", () => {
+  test("new companies start unverified and every gated function throws company_unverified until approved", async () => {
+    const { t, past, tal } = await setup();
+    const hostEvent = await t.run((ctx) => ctx.db.insert("events", event("new-host", NOW + HOUR, ["Newco"])));
+    await t.run((ctx) => ctx.db.insert("attendance", { userId: tal, eventId: hostEvent, going: true }));
+    const newco = await t.mutation(api.companies.create, { deviceId: "mem-device", name: "Newco" });
+    expect((await t.query(api.companies.mine, { deviceId: "mem-device" })).memberships.find((m) => m.company._id === newco)!.company.verified).toBe(false);
+    await t.mutation(api.companies.invite, { deviceId: "mem-device", companyId: newco, email: "own-device@example.com" });
+    expect(await t.query(api.companies.get, { deviceId: "mem-device", companyId: newco })).toMatchObject({ company: { verified: false }, myRole: "owner" });
+
+    const gated = () => ({
+      claimEvent: code(t.mutation(api.companies.claimEvent, { deviceId: "mem-device", companyId: newco, eventId: hostEvent })),
+      claimable: code(t.query(api.companies.claimable, { deviceId: "mem-device", companyId: newco })),
+      eventTalent: code(t.query(api.connections.eventTalent, { deviceId: "mem-device", companyId: newco, eventId: hostEvent })),
+      talentProfile: code(t.query(api.connections.talentProfile, { deviceId: "mem-device", companyId: newco, talentUserId: tal })),
+      expressInterestInTalent: code(t.mutation(api.connections.expressInterestInTalent, { deviceId: "mem-device", companyId: newco, talentUserId: tal, eventId: hostEvent })),
+      expressInterest: code(t.mutation(api.connections.expressInterest, { deviceId: "tal-device", companyId: newco, eventId: hostEvent })),
+    });
+    const all = async () => Object.fromEntries(await Promise.all(Object.entries(gated()).map(async ([k, p]) => [k, await p])));
+    expect(await all()).toEqual({ claimEvent: "company_unverified", claimable: "company_unverified", eventTalent: "company_unverified", talentProfile: "company_unverified", expressInterestInTalent: "company_unverified", expressInterest: "company_unverified" });
+
+    vi.setSystemTime(NOW + DAY);
+    await t.run((ctx) => ctx.db.insert("event_hosts", { eventId: hostEvent, companyId: newco, claimedBy: tal, createdAt: NOW }));
+    expect((await t.query(api.connections.discover, { deviceId: "tal-device" })).flatMap((d) => d.companies.map((c) => c.company.name))).not.toContain("Newco");
+    await t.run(async (ctx) => { for (const h of await ctx.db.query("event_hosts").withIndex("by_company", (q) => q.eq("companyId", newco)).collect()) await ctx.db.delete(h._id); });
+
+    expect(await t.mutation(internal.companies.verify, { slug: "newco", by: "tony" })).toMatchObject({ companyId: newco, name: "Newco", verifiedAt: expect.closeTo(NOW + DAY, -3) });
+    expect(await t.run(async (ctx) => (await ctx.db.get(newco))!.verifiedBy)).toBe("tony");
+    expect(await code(t.mutation(api.companies.claimEvent, { deviceId: "mem-device", companyId: newco, eventId: hostEvent }))).toBe("ok");
+    expect(await t.query(api.companies.claimable, { deviceId: "mem-device", companyId: newco })).toEqual([]);
+    expect(await t.query(api.connections.eventTalent, { deviceId: "mem-device", companyId: newco, eventId: hostEvent })).toHaveLength(1);
+    expect((await t.query(api.connections.talentProfile, { deviceId: "mem-device", companyId: newco, talentUserId: tal })).sharedEvents).toHaveLength(1);
+    expect((await t.query(api.connections.discover, { deviceId: "tal-device" })).find((d) => d.event._id === hostEvent)!.companies[0].company).toMatchObject({ name: "Newco", verified: true });
+    const { connectionId } = await t.mutation(api.connections.expressInterestInTalent, { deviceId: "mem-device", companyId: newco, talentUserId: tal, eventId: hostEvent });
+    expect(past).toBeDefined();
+
+    await t.mutation(internal.companies.unverify, { companyId: newco });
+    expect(await code(t.mutation(api.connections.respond, { deviceId: "tal-device", connectionId, accept: true }))).toBe("company_unverified");
+    expect(await code(t.mutation(api.connections.expressInterest, { deviceId: "tal-device", companyId: newco, eventId: hostEvent }))).toBe("company_unverified");
+    expect(await code(t.query(api.connections.eventTalent, { deviceId: "mem-device", companyId: newco, eventId: hostEvent }))).toBe("company_unverified");
+    await t.mutation(internal.companies.verify, { companyId: newco, by: "tony" });
+    await t.mutation(api.connections.respond, { deviceId: "tal-device", connectionId, accept: true });
+    await t.mutation(api.chat.send, { deviceId: "mem-device", connectionId, body: "hello" });
+
+    await t.mutation(internal.companies.unverify, { slug: "Newco" });
+    expect((await t.query(api.chat.list, { deviceId: "tal-device", connectionId })).messages.map((m) => m.body)).toEqual(["hello"]);
+    expect(await code(t.mutation(api.chat.send, { deviceId: "mem-device", connectionId, body: "more" }))).toBe("company_unverified");
+    expect((await t.query(api.connections.inbox, { deviceId: "tal-device" })).talent.connected[0].company.verified).toBe(false);
+    expect(await code(t.mutation(api.connections.respond, { deviceId: "tal-device", connectionId, accept: false }))).toBe("ok");
+    expect(await code(t.mutation(internal.companies.verify, { by: "tony" }))).toBe("invalid");
+    expect(await code(t.mutation(internal.companies.verify, { slug: "nope", by: "tony" }))).toBe("not_found");
   });
 });
 

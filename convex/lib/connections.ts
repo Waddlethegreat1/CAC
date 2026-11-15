@@ -18,7 +18,7 @@ export const MAX_DISCOVER_EVENTS = 200;
 export const MAX_EVENT_TALENT = 500;
 
 export type Side = "talent" | "company";
-export type ErrorCode = "not_onboarded" | "not_found" | "forbidden" | "not_eligible" | "blocked" | "rate_limited" | "invalid";
+export type ErrorCode = "not_onboarded" | "not_found" | "forbidden" | "not_eligible" | "blocked" | "rate_limited" | "invalid" | "company_unverified";
 
 export const fail = (code: ErrorCode, message: string): never => {
   throw new ConvexError({ code, message });
@@ -33,6 +33,7 @@ export const companyView = v.object({
   slug: v.string(),
   website: v.optional(v.string()),
   logo: v.optional(v.string()),
+  verified: v.boolean(),
 });
 export const eventSummary = v.object({
   _id: v.id("events"),
@@ -50,9 +51,16 @@ export const sharedContact = v.object({
 export const nullableStatus = v.union(connectionStatus, v.null());
 export { companyRole, connectionSide, connectionStatus };
 
-export const toCompany = ({ _id, name, slug, website, logo }: Doc<"companies">) => ({
-  _id, name, slug, ...(website === undefined ? {} : { website }), ...(logo === undefined ? {} : { logo }),
+export const toCompany = ({ _id, name, slug, website, logo, verifiedAt }: Doc<"companies">) => ({
+  _id, name, slug, ...(website === undefined ? {} : { website }), ...(logo === undefined ? {} : { logo }), verified: verifiedAt !== undefined,
 });
+
+export async function requireVerified(ctx: QueryCtx, companyId: Id<"companies">) {
+  const company = await ctx.db.get(companyId);
+  if (!company) return fail("not_found", "Company not found");
+  if (company.verifiedAt === undefined) fail("company_unverified", "This company is waiting for verification");
+  return company;
+}
 export const toEvent = ({ _id, title, startTime, endTime }: Doc<"events">) => ({
   _id, title, startTime, ...(endTime === undefined ? {} : { endTime }),
 });

@@ -47,6 +47,7 @@ import type * as lib_geo from "../lib/geo.js";
 import type * as lib_http from "../lib/http.js";
 import type * as lib_identity from "../lib/identity.js";
 import type * as lib_interests from "../lib/interests.js";
+import type * as lib_profile from "../lib/profile.js";
 import type * as lib_ranking from "../lib/ranking.js";
 import type * as lib_rawEvent from "../lib/rawEvent.js";
 import type * as lib_robots from "../lib/robots.js";
@@ -113,6 +114,7 @@ declare const fullApi: ApiFromModules<{
   "lib/http": typeof lib_http;
   "lib/identity": typeof lib_identity;
   "lib/interests": typeof lib_interests;
+  "lib/profile": typeof lib_profile;
   "lib/ranking": typeof lib_ranking;
   "lib/rawEvent": typeof lib_rawEvent;
   "lib/robots": typeof lib_robots;

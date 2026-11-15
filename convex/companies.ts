@@ -1,13 +1,19 @@
 import { v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
-import { mutation, query, type QueryCtx } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
+import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { checkContactField } from "./lib/contact";
 import { callerFor, requireCaller } from "./lib/identity";
 import {
-  companyRole, companyView, eventSummary, fail, MAX_MEMBERSHIPS, membershipOf, MAX_ROWS, requireMember, slugify, toCompany, toEvent,
+  companyRole, companyView, eventSummary, fail, MAX_MEMBERSHIPS, membershipOf, MAX_ROWS, requireMember, requireVerified, slugify, toCompany, toEvent,
 } from "./lib/connections";
 
 const MAX_OWNED = 10;
+const MAX_CLAIMABLE = 50;
+const CLAIM_SCAN = 4000;
+const CLAIM_LOOKBACK_MS = 365 * 86_400_000;
+const CLAIM_LOOKAHEAD_MS = 365 * 86_400_000;
+
+const hostSlugs = (event: Doc<"events">) => [...event.hosts, ...(event.organizer ? [event.organizer] : [])].map(slugify);
 const MAX_MEMBERS = 100;
 const MAX_PENDING_INVITES = 20;
 
@@ -186,10 +192,10 @@ export const claimEvent = mutation({
   handler: async (ctx, { deviceId, companyId, eventId }) => {
     const user = await requireCaller(ctx, deviceId);
     await requireMember(ctx, companyId, user._id);
-    const [company, event] = await Promise.all([ctx.db.get(companyId), ctx.db.get(eventId)]);
-    if (!company || !event) return fail("not_found", "Company or event not found");
-    const names = [...event.hosts, ...(event.organizer ? [event.organizer] : [])].map(slugify);
-    if (!names.includes(company.slug)) fail("forbidden", "This event does not list your company as a host or organizer");
+    const company = await requireVerified(ctx, companyId);
+    const event = await ctx.db.get(eventId);
+    if (!event) return fail("not_found", "Event not found");
+    if (!hostSlugs(event).includes(company.slug)) fail("forbidden", "This event does not list your company as a host or organizer");
     const existing = await ctx.db.query("event_hosts").withIndex("by_event", (q) => q.eq("eventId", eventId).eq("companyId", companyId)).unique();
     if (!existing) await ctx.db.insert("event_hosts", { eventId, companyId, claimedBy: user._id, createdAt: Date.now() });
     return null;
@@ -205,5 +211,58 @@ export const unclaimEvent = mutation({
     const existing = await ctx.db.query("event_hosts").withIndex("by_event", (q) => q.eq("eventId", eventId).eq("companyId", companyId)).unique();
     if (existing) await ctx.db.delete(existing._id);
     return null;
+  },
+});
+
+export const claimable = query({
+  args: { deviceId: v.string(), companyId: v.id("companies") },
+  returns: v.array(eventSummary),
+  handler: async (ctx, { deviceId, companyId }) => {
+    const user = await requireCaller(ctx, deviceId);
+    await requireMember(ctx, companyId, user._id);
+    const company = await requireVerified(ctx, companyId);
+    const now = Date.now();
+    const candidates = await ctx.db.query("events")
+      .withIndex("by_start", (q) => q.gte("startTime", now - CLAIM_LOOKBACK_MS).lte("startTime", now + CLAIM_LOOKAHEAD_MS))
+      .order("desc").take(CLAIM_SCAN);
+    const out = [];
+    for (const event of candidates) {
+      if (event.hiddenAt !== undefined || !hostSlugs(event).includes(company.slug)) continue;
+      if (await ctx.db.query("event_hosts").withIndex("by_event", (q) => q.eq("eventId", event._id).eq("companyId", companyId)).unique()) continue;
+      out.push(toEvent(event));
+      if (out.length >= MAX_CLAIMABLE) break;
+    }
+    return out;
+  },
+});
+
+const companyRef = { companyId: v.optional(v.id("companies")), slug: v.optional(v.string()) };
+
+async function companyByRef(ctx: MutationCtx, { companyId, slug }: { companyId?: Id<"companies">; slug?: string }) {
+  if ((companyId === undefined) === (slug === undefined)) return fail("invalid", "Pass exactly one of companyId or slug");
+  const company = companyId ? await ctx.db.get(companyId) : await ctx.db.query("companies").withIndex("by_slug", (q) => q.eq("slug", slugify(slug!))).unique();
+  return company ?? fail("not_found", "Company not found");
+}
+
+export const verify = internalMutation({
+  args: { ...companyRef, by: v.string() },
+  returns: v.object({ companyId: v.id("companies"), name: v.string(), verifiedAt: v.number() }),
+  handler: async (ctx, { by, ...ref }) => {
+    const company = await companyByRef(ctx, ref);
+    const reviewer = by.trim();
+    if (!reviewer) fail("invalid", "Say who approved the company");
+    const verifiedAt = company.verifiedAt ?? Date.now();
+    await ctx.db.patch(company._id, { verifiedAt, verifiedBy: reviewer });
+    return { companyId: company._id, name: company.name, verifiedAt };
+  },
+});
+
+export const unverify = internalMutation({
+  args: companyRef,
+  returns: v.object({ companyId: v.id("companies"), name: v.string() }),
+  handler: async (ctx, ref) => {
+    const company = await companyByRef(ctx, ref);
+    await ctx.db.patch(company._id, { verifiedAt: undefined, verifiedBy: undefined });
+    return { companyId: company._id, name: company.name };
   },
 });

@@ -11,6 +11,7 @@
     "test": "vitest run",
     "lint": "pnpm --filter app lint",
     "seed:feeds": "node scripts/seedFeeds.mjs",
+    "verify:company": "node scripts/verifyCompany.mjs",
     "llm:fetch-pages": "node --experimental-strip-types scripts/fetch-llm-pages.mts",
     "llm:record": "tsx scripts/record-llm.mts",
     "llm:accuracy": "tsx scripts/llm-accuracy.mts"
