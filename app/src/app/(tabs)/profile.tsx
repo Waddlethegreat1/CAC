@@ -11,7 +11,7 @@ import { SelectChip } from "@/components/select-chip";
 import { colors, layout, radius, shadow, space, type } from "@/constants/theme";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
-import { RADIUS_OPTIONS, useDeviceId, useSearchRadius } from "@/lib/device";
+import { DEFAULT_RADIUS_KM, RADIUS_OPTIONS, useDeviceId } from "@/lib/device";
 import { AREAS, cityPlace, locateDevice, type Place, type Role } from "@/lib/profile";
 
 type User = Doc<"users">;
@@ -42,7 +42,6 @@ export default function ProfileScreen() {
 function ProfileForm({ user }: { user: User }) {
   const catalog = useQuery(api.interests.list);
   const upsert = useMutation(api.users.upsert);
-  const { radiusKm, setRadiusKm } = useSearchRadius();
   const [editingInterests, setEditingInterests] = useState(false);
   const [draft, setDraft] = useState<string[]>(user.interests);
   const [areaOpen, setAreaOpen] = useState(false);
@@ -61,7 +60,7 @@ function ProfileForm({ user }: { user: User }) {
     noticeTimer.current = setTimeout(() => setNotice(null), 2500);
   };
 
-  const save = async (patch: Partial<{ role: Role; interests: string[] } & Place>, done: string) => {
+  const save = async (patch: Partial<{ role: Role; interests: string[]; radiusKm: number } & Place>, done: string) => {
     setError(null);
     try {
       await upsert({
@@ -210,11 +209,8 @@ function ProfileForm({ user }: { user: User }) {
           <Segmented
             accessibilityLabel="Distance"
             options={RADIUS_OPTIONS.map((o) => ({ value: o.km, label: o.label, testID: `profile-radius-${o.km}` }))}
-            value={radiusKm}
-            onChange={(km) => {
-              setRadiusKm(km);
-              flash("Distance updated");
-            }}
+            value={user.radiusKm ?? DEFAULT_RADIUS_KM}
+            onChange={(radiusKm) => void save({ radiusKm }, "Distance updated")}
           />
         </View>
       </View>
