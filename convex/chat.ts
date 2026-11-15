@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
-import { requireCaller } from "./lib/identity";
+import { requireCaller, requireHost } from "./lib/identity";
 import { cleanText, fail, MAX_BODY, requireVerified, sideOf } from "./lib/connections";
 
 const DEFAULT_PAGE = 50;
@@ -17,6 +17,7 @@ async function openChat(ctx: QueryCtx, deviceId: string, connectionId: Id<"conne
   const connection = await ctx.db.get(connectionId);
   const side = connection ? await sideOf(ctx, connection, user._id) : null;
   if (!connection || !side) return fail("not_found", "Connection not found");
+  if (side === "company") requireHost(user);
   if (connection.status !== "accepted") fail("forbidden", "Chat opens once the connection is accepted");
   return { user, connection };
 }
