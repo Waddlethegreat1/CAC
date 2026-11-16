@@ -84,7 +84,7 @@ export default function Saved() {
                 onPress={() => unsave(item._id, item.title)}
                 style={styles.unsave}
               >
-                {pending === item._id ? <ActivityIndicator size="small" color={colors.ember} /> : <BookmarkIcon size={20} color={colors.ember} filled />}
+                {pending === item._id ? <ActivityIndicator size="small" color={colors.brand} /> : <BookmarkIcon size={20} color={colors.brand} filled />}
               </Pressable>
             }
           />
@@ -116,13 +116,13 @@ export default function Saved() {
           ) : tab === "upcoming" ? (
             <EmptyState
               testID="saved-empty"
-              icon={<BookmarkIcon size={22} color={colors.ember} />}
+              icon={<BookmarkIcon size={22} color={colors.brand} />}
               title="No saved events yet"
               body="Tap Save on an event and it shows up here"
               action={{ label: "Browse events", onPress: () => router.navigate("/feed"), testID: "browse-events" }}
             />
           ) : (
-            <EmptyState icon={<BookmarkIcon size={22} color={colors.ember} />} title="No past events" body="Events you saved move here after they end" />
+            <EmptyState icon={<BookmarkIcon size={22} color={colors.brand} />} title="No past events" body="Events you saved move here after they end" />
           )
         }
       />

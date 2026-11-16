@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapEvents, markerGroups, nextInGroup, selectedEvent, validCoordinates } from "./model";
+import { clusterGroups, mapEvents, markerGroups, nextInGroup, selectedEvent, validCoordinates } from "./model";
 
 describe("event map", () => {
   it("validates finite, complete coordinates without inventing a location", () => {
@@ -25,5 +25,20 @@ describe("event map", () => {
     expect(nextInGroup(groups[0].ids)).toBe("a");
     expect(nextInGroup(groups[0].ids, "a")).toBe("b");
     expect(nextInGroup(groups[0].ids, "b")).toBe("a");
+  });
+  it("clusters nearby groups at the current zoom and keeps distant ones apart", () => {
+    const sf = { lat: 37.78, lng: -122.41, ids: ["a"], saved: false };
+    const soma = { lat: 37.781, lng: -122.405, ids: ["b", "c"], saved: true };
+    const sj = { lat: 37.33, lng: -121.89, ids: ["d"], saved: false };
+    const zoomedOut = clusterGroups([sf, soma, sj], 0.05);
+    expect(zoomedOut).toHaveLength(2);
+    const city = zoomedOut.find((c) => c.ids.includes("a"))!;
+    expect(city.ids.sort()).toEqual(["a", "b", "c"]);
+    expect(city.saved).toBe(true);
+    expect(city.groups).toHaveLength(2);
+    expect(city.bounds).toEqual({ south: 37.78, west: -122.41, north: 37.781, east: -122.405 });
+    expect(city.lat).toBeCloseTo(37.7805);
+    expect(clusterGroups([sf, soma, sj], 0.001)).toHaveLength(3);
+    expect(clusterGroups([], 1)).toEqual([]);
   });
 });

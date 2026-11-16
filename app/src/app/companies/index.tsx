@@ -30,7 +30,7 @@ export default function CompaniesScreen() {
           {status?.role === "host" ? <Button testID="verify-work-email" label="Verify work email" style={{ marginTop: space.md }} onPress={() => router.push("/host/verify")} /> : null}
         </View>
       ) : mine === undefined ? (
-        <ActivityIndicator style={{ flex: 1 }} color={colors.ember} />
+        <ActivityIndicator style={{ flex: 1 }} color={colors.brand} />
       ) : (
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {mine.invites.length ? (

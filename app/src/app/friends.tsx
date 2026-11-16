@@ -74,7 +74,7 @@ export default function FriendsScreen() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <SectionTitle>Your friend code</SectionTitle>
           <Card style={styles.codeCard} testID="friends-my-code">
-            {code ? <Text style={styles.code} selectable testID="friend-code">{code.friendCode}</Text> : codeError ? <Text style={styles.error}>Couldn&apos;t load your code. Check your connection and reopen Friends</Text> : <ActivityIndicator color={colors.ember} />}
+            {code ? <Text style={styles.code} selectable testID="friend-code">{code.friendCode}</Text> : codeError ? <Text style={styles.error}>Couldn&apos;t load your code. Check your connection and reopen Friends</Text> : <ActivityIndicator color={colors.brand} />}
             <View style={styles.row}>
               <Button testID="friends-copy-code" label="Copy code" variant="outline" disabled={!code} style={styles.flex} onPress={copy} />
             </View>
@@ -102,7 +102,7 @@ export default function FriendsScreen() {
           {notice ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text> : null}
 
           {list === undefined ? (
-            <ActivityIndicator style={{ marginTop: space.xxl }} color={colors.ember} />
+            <ActivityIndicator style={{ marginTop: space.xxl }} color={colors.brand} />
           ) : (
             <>
               {list.incoming.length ? (
@@ -175,8 +175,8 @@ const styles = StyleSheet.create({
   notice: { ...type.meta, color: colors.success, marginTop: space.sm },
   person: { flexDirection: "row", alignItems: "center", gap: space.sm, minHeight: layout.tapTarget + 12, paddingHorizontal: layout.cardPadding, paddingVertical: space.sm },
   divider: { borderTopWidth: 0.5, borderTopColor: colors.line },
-  avatar: { width: 34, height: 34, borderRadius: radius.pill, backgroundColor: colors.emberSoft, alignItems: "center", justifyContent: "center" },
-  initial: { ...type.label, color: colors.emberInk },
+  avatar: { width: 34, height: 34, borderRadius: radius.pill, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center" },
+  initial: { ...type.label, color: colors.brandInk },
   name: { ...type.bodyStrong, color: colors.ink },
   meta: { ...type.meta, color: colors.muted },
   small: { height: 34, paddingHorizontal: 12 },

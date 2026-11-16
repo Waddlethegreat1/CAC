@@ -3,9 +3,9 @@ import type { TextStyle } from "react-native";
 import type { Doc } from "@/convex/_generated/dataModel";
 
 const light = {
-  ember: "#E2531F",
-  emberInk: "#C2410C",
-  emberSoft: "rgba(226, 83, 31, 0.12)",
+  brand: "#0A6CFF",
+  brandInk: "#0060DF",
+  brandSoft: "rgba(10, 108, 255, 0.12)",
   gold: "#A86A00",
   goldSoft: "rgba(168, 106, 0, 0.14)",
   ink: "#16171D",
@@ -24,9 +24,9 @@ const light = {
 export type Palette = typeof light;
 
 const dark: Palette = {
-  ember: "#FF7A45",
-  emberInk: "#FF9A6B",
-  emberSoft: "rgba(255, 122, 69, 0.12)",
+  brand: "#2F86FF",
+  brandInk: "#5AA9FF",
+  brandSoft: "rgba(47, 134, 255, 0.16)",
   gold: "#F2B33D",
   goldSoft: "rgba(242, 179, 61, 0.14)",
   ink: "#F1F1F3",
@@ -48,8 +48,8 @@ export const colors = {
   ...light,
   card: light.surface,
   faint: light.line,
-  accent: light.ember,
-  accentSoft: light.emberSoft,
+  accent: light.brand,
+  accentSoft: light.brandSoft,
   money: light.gold,
   moneySoft: light.goldSoft,
 };
@@ -109,17 +109,17 @@ export const shadow = {
 export const INVESTOR_LIKELY_MIN = 70;
 export const INVESTOR_SOME_MIN = 40;
 
-type EventType = Doc<"events">["eventType"];
+export type EventType = Doc<"events">["eventType"];
 
-export const EVENT_TYPE_META: Record<EventType, { label: string; color: string; emoji: string }> = {
-  hackathon: { label: "Hackathon", color: "#5B5BD6", emoji: "💻" },
-  pitch_competition: { label: "Pitch competition", color: light.ember, emoji: "🎤" },
-  demo_day: { label: "Demo day", color: "#E5484D", emoji: "🚀" },
-  networking: { label: "Networking", color: "#12A594", emoji: "🤝" },
-  workshop: { label: "Workshop", color: "#D6409F", emoji: "🛠️" },
-  talk: { label: "Talk", color: "#8E4EC6", emoji: "🎙️" },
-  conference: { label: "Conference", color: "#0090FF", emoji: "🏛️" },
-  career_fair: { label: "Career fair", color: "#AD7F58", emoji: "🎓" },
-  social: { label: "Social", color: "#46A758", emoji: "🎉" },
-  other: { label: "Event", color: light.muted, emoji: "📍" },
+export const EVENT_TYPE_META: Record<EventType, { label: string; color: string }> = {
+  hackathon: { label: "Hackathon", color: "#5B5BD6" },
+  pitch_competition: { label: "Pitch competition", color: "#E5641A" },
+  demo_day: { label: "Demo day", color: "#DC3E42" },
+  networking: { label: "Networking", color: "#0D8C7E" },
+  workshop: { label: "Workshop", color: "#C2298A" },
+  talk: { label: "Talk", color: "#8E4EC6" },
+  conference: { label: "Conference", color: "#0588F0" },
+  career_fair: { label: "Career fair", color: "#A07553" },
+  social: { label: "Social", color: "#2F8A3E" },
+  other: { label: "Event", color: light.muted },
 };

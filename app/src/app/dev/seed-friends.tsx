@@ -30,7 +30,7 @@ function Seed() {
 
   return (
     <View style={styles.center}>
-      {error ? <Text style={styles.error}>Seeding failed: {error}</Text> : <ActivityIndicator color={colors.ember} />}
+      {error ? <Text style={styles.error}>Seeding failed: {error}</Text> : <ActivityIndicator color={colors.brand} />}
     </View>
   );
 }

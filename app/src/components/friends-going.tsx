@@ -16,7 +16,7 @@ export function FriendsGoing({ eventId }: { eventId: Id<"events"> }) {
   const shown = names.length > 3 ? `${names.slice(0, 3).join(", ")} and ${names.length - 3} more` : names.join(", ");
   return (
     <View testID="friends-going" accessibilityLabel={`Friends going: ${names.join(", ")}`} style={styles.row}>
-      <PeopleIcon size={18} color={colors.ember} />
+      <PeopleIcon size={18} color={colors.brand} />
       <View style={{ flex: 1 }}>
         <Text style={styles.label}>{going.length === 1 ? "1 friend going" : `${going.length} friends going`}</Text>
         <Text style={styles.names}>{shown}</Text>

@@ -41,7 +41,7 @@ export function ShareContactToggle({ connectionId, companyName, shareContact, ac
           value={shareContact}
           disabled={busy}
           onValueChange={(next) => void toggle(next)}
-          trackColor={{ true: colors.ember, false: colors.lineStrong }}
+          trackColor={{ true: colors.brand, false: colors.lineStrong }}
         />
       </View>
       <Text style={styles.meta}>

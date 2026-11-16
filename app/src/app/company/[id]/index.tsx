@@ -47,7 +47,7 @@ export default function CompanyScreen() {
   const unclaim = useMutation(api.companies.unclaimEvent);
   const { busy, error, run } = useRun();
 
-  if (page === undefined) return <ActivityIndicator style={{ flex: 1, backgroundColor: colors.bg }} color={colors.ember} />;
+  if (page === undefined) return <ActivityIndicator style={{ flex: 1, backgroundColor: colors.bg }} color={colors.brand} />;
   if (page === null) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -74,7 +74,7 @@ export default function CompanyScreen() {
           <VerificationBadge company={company} />
           {company.website ? (
             <Pressable accessibilityRole="link" onPress={() => Linking.openURL(company.website!).catch(() => undefined)}>
-              <Text style={[styles.meta, { color: colors.emberInk }]}>{company.website.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}</Text>
+              <Text style={[styles.meta, { color: colors.brandInk }]}>{company.website.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -243,7 +243,7 @@ function Claimable({ companyId }: { companyId: Id<"companies"> }) {
     <>
       <SectionTitle>Events listing you as host</SectionTitle>
       {events === undefined ? (
-        <ActivityIndicator color={colors.ember} />
+        <ActivityIndicator color={colors.brand} />
       ) : events.length ? (
         <Card>
           {events.map((e: EventSummary, i) => (

@@ -28,7 +28,7 @@ export default function InvestorEventDetail() {
   const [error, setError] = useState<string | null>(null);
   const [now] = useState(() => Date.now());
 
-  if (event === undefined) return <ActivityIndicator style={{ flex: 1, backgroundColor: colors.bg }} color={colors.ember} />;
+  if (event === undefined) return <ActivityIndicator style={{ flex: 1, backgroundColor: colors.bg }} color={colors.brand} />;
   if (event === null) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -71,7 +71,7 @@ export default function InvestorEventDetail() {
       </View>
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
         <View style={[styles.hero, high && styles.heroGold]}>
-          <Icon name="trending-up" size={36} color={high ? colors.gold : colors.ember} />
+          <Icon name="trending-up" size={36} color={high ? colors.gold : colors.brand} />
           <Text style={styles.src}>via {source}</Text>
         </View>
         <Text testID="event-title" style={styles.title}>
@@ -102,7 +102,7 @@ export default function InvestorEventDetail() {
         <View testID="student-turnout" style={[styles.section, styles.turnout]}>
           <View style={styles.turnoutHead}>
             <View style={styles.turnoutLabel}>
-              <Icon name="graduation-cap" size={16} color={colors.ember} />
+              <Icon name="graduation-cap" size={16} color={colors.brand} />
               <Text style={styles.h2}>{turnoutLabel(s.studentDensity)}</Text>
             </View>
             <Text style={styles.turnoutNum}>{turnout}</Text>
@@ -137,8 +137,8 @@ export default function InvestorEventDetail() {
               <ActivityIndicator color={colors.white} />
             ) : (
               <>
-                <Icon name={saved ? "bookmark-filled" : "bookmark"} size={18} color={saved ? colors.emberInk : colors.white} />
-                <Text style={[styles.btnText, { color: saved ? colors.emberInk : colors.white }]}>{saved ? "Saved" : "Save"}</Text>
+                <Icon name={saved ? "bookmark-filled" : "bookmark"} size={18} color={saved ? colors.brandInk : colors.white} />
+                <Text style={[styles.btnText, { color: saved ? colors.brandInk : colors.white }]}>{saved ? "Saved" : "Save"}</Text>
               </>
             )}
           </Pressable>
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
   bar: { height: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 8 },
   back: { width: layout.tapTarget, height: layout.tapTarget, alignItems: "center", justifyContent: "center" },
   kind: { ...type.tag, marginRight: 12, height: 22, lineHeight: 22, paddingHorizontal: 8, borderRadius: radius.tag, overflow: "hidden", backgroundColor: colors.secondary, color: colors.muted },
-  hero: { marginHorizontal: layout.screenPadding, height: 120, borderRadius: radius.lg, backgroundColor: colors.emberSoft, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", padding: 14 },
+  hero: { marginHorizontal: layout.screenPadding, height: 120, borderRadius: radius.lg, backgroundColor: colors.brandSoft, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", padding: 14 },
   heroGold: { backgroundColor: colors.goldSoft },
   src: { ...type.tag, fontWeight: "500", color: colors.muted, backgroundColor: colors.surface, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.tag, overflow: "hidden" },
   title: { ...type.detailTitle, color: colors.ink, marginTop: 16, marginHorizontal: layout.screenPadding, marginBottom: 4 },
@@ -174,14 +174,14 @@ const styles = StyleSheet.create({
   turnoutLabel: { flexDirection: "row", alignItems: "center", gap: 6 },
   turnoutNum: { ...type.numeric, fontSize: 14, fontWeight: "600", color: colors.ink },
   track: { height: 6, borderRadius: 3, backgroundColor: colors.secondary, overflow: "hidden" },
-  fill: { height: 6, borderRadius: 3, backgroundColor: colors.ember },
+  fill: { height: 6, borderRadius: 3, backgroundColor: colors.brand },
   h2: { ...type.label, fontSize: 14, fontWeight: "600", color: colors.ink, marginBottom: 2 },
   p: { ...type.meta, fontSize: 14, lineHeight: 21, color: colors.muted },
   action: { paddingHorizontal: layout.screenPadding, paddingTop: 12, paddingBottom: 8, gap: 6, borderTopWidth: 0.5, borderTopColor: colors.line, backgroundColor: colors.surface },
   btns: { flexDirection: "row", gap: 8 },
   btn: { flex: 1, height: layout.buttonHeight, borderRadius: radius.button, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 },
-  primary: { backgroundColor: colors.ember },
-  saved: { backgroundColor: colors.emberSoft, borderWidth: 1, borderColor: colors.ember },
+  primary: { backgroundColor: colors.brand },
+  saved: { backgroundColor: colors.brandSoft, borderWidth: 1, borderColor: colors.brand },
   outline: { backgroundColor: colors.surface, borderWidth: 0.5, borderColor: colors.lineStrong },
   btnText: { ...type.bodyStrong, color: colors.ink },
   err: { ...type.meta, color: colors.danger },
