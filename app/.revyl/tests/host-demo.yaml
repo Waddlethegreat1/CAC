@@ -1,3 +1,11 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: 627c1b33-18bd-4016-a977-b324451a30f6
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-16T00:51:34Z"
+    checksum: 211410f63b62855cfcd4b4bffeb3b76b415eedbaa7df9374ffc965fa108ff8ee
 test:
     metadata:
         name: host-demo
@@ -10,7 +18,7 @@ test:
     blocks:
         - type: manual
           step_type: navigate
-          step_description: "cac-scout://dev/seed-host-demo"
+          step_description: cac-scout://dev/seed-host-demo
         - type: validation
           step_description: After a short spinner, the Talent matches screen is shown for "[TEST] Northwind AI builders night". Priya Raman shows Mutual, Marcus Ellery shows Interested in you, and Daniel Okafor, Hana, Leo and Sofia have no connection yet. Each row shows a school and a prior role.
         - type: instructions

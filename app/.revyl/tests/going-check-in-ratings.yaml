@@ -1,3 +1,11 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: 31544e00-03ef-4be4-af5b-55592e76c06b
+    remote_version: 2
+    local_version: 2
+    last_synced_at: "2026-11-16T00:51:56Z"
+    checksum: cb61c96ba67d66e12ed71afe89a8fc0b038522f99f559075588a02ec1e579af7
 test:
     metadata:
         name: going-check-in-ratings
@@ -8,7 +16,7 @@ test:
         name: Scout iOS
     blocks:
         - type: module_import
-          module: "onboard-student"
+          module: onboard-student
         - type: validation
           step_description: The For you feed shows upcoming event cards, each with a separate I'm going button.
         - type: instructions
@@ -25,7 +33,7 @@ test:
           step_description: The event still says Saved, but the going control now says I'm going.
         - type: manual
           step_type: navigate
-          step_description: "cac-scout://dev/seed-checkin"
+          step_description: cac-scout://dev/seed-checkin
         - type: validation
           step_description: The For you feed is visible, with a "Did you make it" card for "[TEST] Scout fixture past hack night" at the top.
         - type: instructions
