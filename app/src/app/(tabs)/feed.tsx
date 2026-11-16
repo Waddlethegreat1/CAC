@@ -96,7 +96,7 @@ export default function Feed() {
           onPress={() => router.push("/profile")}
           style={styles.locbtn}
         >
-          <PinIcon size={14} color={colors.ember} />
+          <PinIcon size={14} color={colors.brand} />
           <Text style={styles.locText} numberOfLines={1}>
             {feed?.city ?? "Nearby"} · {radius}
           </Text>
@@ -112,7 +112,7 @@ export default function Feed() {
             label={f.label}
             selected={filter === f.id}
             onPress={() => setFilter(f.id)}
-            icon={f.id === "investors" ? <SignalIcon size={13} color={filter === f.id ? colors.emberInk : colors.gold} /> : undefined}
+            icon={f.id === "investors" ? <SignalIcon size={13} color={filter === f.id ? colors.brandInk : colors.gold} /> : undefined}
           />
         ))}
       </ScrollView>
@@ -140,7 +140,7 @@ export default function Feed() {
     ) : filter !== "all" ? (
       <EmptyState
         testID="feed-empty-filter"
-        icon={<SearchIcon color={colors.ember} />}
+        icon={<SearchIcon color={colors.brand} />}
         title="Nothing matches this filter"
         body="Try another filter or clear it to see everything"
         action={{ label: "Clear filter", onPress: () => setFilter("all"), testID: "clear-filter" }}
@@ -148,7 +148,7 @@ export default function Feed() {
     ) : (
       <EmptyState
         testID="feed-empty"
-        icon={<SearchIcon color={colors.ember} />}
+        icon={<SearchIcon color={colors.brand} />}
         title="No events near you yet"
         body="We check new listings every hour. Try a wider area or add interests"
         action={
@@ -176,7 +176,7 @@ export default function Feed() {
         renderItem={({ item }) => <EventCard event={item} />}
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.ember} colors={[colors.ember]} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand} colors={[colors.brand]} />}
       />
     </SafeAreaView>
   );

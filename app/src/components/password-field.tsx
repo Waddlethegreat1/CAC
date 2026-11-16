@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
   },
   fieldError: { borderColor: colors.danger },
   input: { flex: 1, ...type.body, color: colors.ink, height: "100%" },
-  toggle: { height: 32, marginRight: 8, paddingHorizontal: 12, borderRadius: radius.pill, backgroundColor: colors.emberSoft, justifyContent: "center" },
-  toggleText: { ...type.label, color: colors.emberInk },
+  toggle: { height: 32, marginRight: 8, paddingHorizontal: 12, borderRadius: radius.pill, backgroundColor: colors.brandSoft, justifyContent: "center" },
+  toggleText: { ...type.label, color: colors.brandInk },
   error: { ...type.meta, color: colors.danger, marginTop: space.xs },
 });

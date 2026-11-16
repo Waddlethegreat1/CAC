@@ -123,5 +123,5 @@ const styles = StyleSheet.create({
   hint: { ...type.meta, color: colors.subtle, marginTop: space.xs },
   foot: { paddingHorizontal: layout.screenPadding, paddingBottom: space.md, gap: space.sm },
   backBtn: { alignSelf: "center", paddingVertical: space.sm },
-  backText: { ...type.label, color: colors.emberInk },
+  backText: { ...type.label, color: colors.brandInk },
 });

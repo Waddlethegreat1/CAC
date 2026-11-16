@@ -29,7 +29,7 @@ export function EmptyState({ icon, title, body, action, tone = "neutral", testID
 
 const styles = StyleSheet.create({
   wrap: { alignItems: "center", paddingVertical: 56, paddingHorizontal: 24, gap: 6 },
-  glyph: { width: 48, height: 48, borderRadius: 14, backgroundColor: colors.emberSoft, alignItems: "center", justifyContent: "center", marginBottom: 8 },
+  glyph: { width: 48, height: 48, borderRadius: 14, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center", marginBottom: 8 },
   title: { ...type.bodyStrong, fontSize: 16, color: colors.ink, textAlign: "center" },
   body: { ...type.meta, fontSize: 14, color: colors.muted, textAlign: "center", lineHeight: 19 },
   btn: {

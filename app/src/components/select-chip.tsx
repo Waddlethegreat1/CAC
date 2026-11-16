@@ -14,7 +14,7 @@ export function SelectChip({ label, selected, onPress, testID }: Props) {
       onPress={onPress}
       style={({ pressed }) => [styles.chip, selected && styles.on, pressed && { opacity: 0.75 }]}
     >
-      {selected ? <Icon name="check" size={14} color={colors.emberInk} strokeWidth={2} /> : null}
+      {selected ? <Icon name="check" size={14} color={colors.brandInk} strokeWidth={2} /> : null}
       <Text style={[styles.label, selected && styles.labelOn]}>{label}</Text>
     </Pressable>
   );
@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
     borderColor: colors.lineStrong,
     ...shadow.plate,
   },
-  on: { backgroundColor: colors.emberSoft, borderColor: colors.ember, borderWidth: 1, shadowOpacity: 0 },
+  on: { backgroundColor: colors.brandSoft, borderColor: colors.brand, borderWidth: 1, shadowOpacity: 0 },
   label: { ...type.body, fontSize: 14, color: colors.ink },
-  labelOn: { color: colors.emberInk, fontWeight: "500" },
+  labelOn: { color: colors.brandInk, fontWeight: "500" },
 });

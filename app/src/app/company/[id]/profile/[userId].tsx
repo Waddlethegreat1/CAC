@@ -27,7 +27,7 @@ export default function TalentProfileScreen() {
   const { id, userId } = useLocalSearchParams<{ id: Id<"companies">; userId: Id<"users"> }>();
   const deviceId = useDeviceId();
   const profile = useQuery(api.connections.talentProfile, deviceId ? { deviceId, companyId: id, talentUserId: userId } : "skip");
-  if (profile === undefined) return <ActivityIndicator style={{ flex: 1, backgroundColor: colors.bg }} color={colors.ember} />;
+  if (profile === undefined) return <ActivityIndicator style={{ flex: 1, backgroundColor: colors.bg }} color={colors.brand} />;
   const { talent, sharedEvents, connection, contact } = profile;
   const contactRows = contact
     ? [
@@ -76,7 +76,7 @@ export default function TalentProfileScreen() {
             {contactRows.map((r, i) => (
               <Pressable key={r.label} accessibilityRole="link" onPress={() => Linking.openURL(r.url).catch(() => undefined)} style={[styles.row, styles.inline, i > 0 && styles.divider]}>
                 <Text style={[styles.body, { flex: 1 }]}>{r.label}</Text>
-                <Text style={[styles.body, { color: colors.emberInk }]} numberOfLines={1}>{r.value}</Text>
+                <Text style={[styles.body, { color: colors.brandInk }]} numberOfLines={1}>{r.value}</Text>
               </Pressable>
             ))}
           </Card>

@@ -149,8 +149,8 @@ export function AttendanceHistory() {
 }
 
 const styles = StyleSheet.create({
-  card: { padding: 14, marginVertical: 12, borderRadius: radius.card, backgroundColor: colors.surface, gap: 10, ...shadow.card, borderColor: colors.ember },
-  eyebrow: { ...type.tag, fontWeight: "500", letterSpacing: 1, color: colors.emberInk },
+  card: { padding: 14, marginVertical: 12, borderRadius: radius.card, backgroundColor: colors.surface, gap: 10, ...shadow.card, borderColor: colors.brand },
+  eyebrow: { ...type.tag, fontWeight: "500", letterSpacing: 1, color: colors.brandInk },
   heading: { ...type.cardTitle, fontSize: 18, color: colors.ink },
   eventTitle: { ...type.bodyStrong, color: colors.ink },
   label: { ...type.label, color: colors.ink },
@@ -160,8 +160,8 @@ const styles = StyleSheet.create({
   input: { minHeight: 44, paddingHorizontal: 12, borderRadius: radius.input, borderWidth: 1, borderColor: colors.lineStrong, color: colors.ink, fontSize: 14 },
   error: { ...type.meta, color: colors.danger, padding: 8 },
   going: { minHeight: 44, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: 0.5, borderColor: colors.line },
-  selected: { backgroundColor: colors.emberSoft },
-  goingLabel: { ...type.label, color: colors.emberInk },
+  selected: { backgroundColor: colors.brandSoft },
+  goingLabel: { ...type.label, color: colors.brandInk },
   aggregate: { gap: 6, paddingTop: 12, marginTop: 8, borderTopWidth: 0.5, borderColor: colors.lineStrong },
   confirmed: { ...type.meta, color: colors.gold },
   historyItem: { padding: 14, borderRadius: radius.card, backgroundColor: colors.surface, gap: 6, ...shadow.card },

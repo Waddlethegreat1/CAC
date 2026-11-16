@@ -29,7 +29,7 @@ export function FilterRow<T extends string>({ label, options, value, onChange }:
 const styles = StyleSheet.create({
   row: { paddingHorizontal: layout.screenPadding, gap: 8, paddingVertical: 4 },
   chip: { ...shadow.plate, height: layout.filterChipHeight, paddingHorizontal: 12, borderRadius: radius.pill, justifyContent: "center", backgroundColor: colors.surface, borderWidth: 0.5, borderColor: colors.lineStrong },
-  on: { backgroundColor: colors.emberSoft, borderColor: colors.ember, borderWidth: 1 },
+  on: { backgroundColor: colors.brandSoft, borderColor: colors.brand, borderWidth: 1 },
   text: { ...type.meta, color: colors.ink },
-  onText: { color: colors.emberInk, fontWeight: "500" },
+  onText: { color: colors.brandInk, fontWeight: "500" },
 });

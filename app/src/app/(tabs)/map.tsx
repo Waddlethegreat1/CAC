@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { EventTypeBadge } from "@/components/event-type-icon";
 import EventMap from "@/components/map/event-map";
 import { mapEvents, markerGroups, selectedEvent } from "@/components/map/model";
 import { EVENT_TYPE_META, palettes, radius, type, type Palette } from "@/constants/theme";
@@ -46,7 +47,10 @@ export default function MapDiscovery() {
   const [notice, setNotice] = useState<string | null>(null);
   const mapped = useMemo(() => mapEvents(feed?.events ?? []), [feed]);
   const savedIds = useMemo(() => new Set((saves ?? []).map((event) => String(event._id))), [saves]);
-  const markers = useMemo(() => markerGroups(mapped.events, savedIds), [mapped, savedIds]);
+  const markers = useMemo(() => {
+    const types = new Map(mapped.events.map((event) => [String(event._id), event.eventType]));
+    return markerGroups(mapped.events, savedIds).map((group) => ({ ...group, eventTypes: group.ids.map((id) => types.get(id)!) }));
+  }, [mapped, savedIds]);
   const selected = selectedEvent(mapped.events, selectedId);
   const center = profile ? { lat: profile.lat, lng: profile.lng } : AREAS[0];
 
@@ -127,11 +131,11 @@ export default function MapDiscovery() {
     </View>
     {notice && <Text accessibilityRole="alert" testID="map-notice" style={styles.notice}>{notice}</Text>}
     <View style={styles.map}>
-      {feed === undefined || !profile ? <View style={styles.center}><ActivityIndicator color={palette.ember} /><Text style={styles.meta}>Loading event locations…</Text></View> :
+      {feed === undefined || !profile ? <View style={styles.center}><ActivityIndicator color={palette.brand} /><Text style={styles.meta}>Loading event locations…</Text></View> :
         <EventMap center={center} radiusKm={radiusKm} recenter={recenter} markers={markers} selectedId={selected?._id} onSelect={setSelectedId} palette={palette} dark={dark} />}
     </View>
     <View style={styles.footer}>
-      <Text testID="map-count" style={styles.label}>{mapped.events.length} located events · gold pins include saved events</Text>
+      <Text testID="map-count" style={styles.label}>{mapped.events.length} located events · a gold dot marks saved events</Text>
       <Text style={styles.meta}>Top 60 feed results, ranked by your interests. Moving the map doesn’t search a new area.</Text>
       {(mapped.online > 0 || mapped.unlocated > 0) && <Text testID="map-excluded" style={styles.meta}>{mapped.online} online · {mapped.unlocated} without coordinates — available in List.</Text>}
       {selected ? <>
@@ -139,7 +143,7 @@ export default function MapDiscovery() {
           {mapped.events.map((event, index) => <Pressable key={event._id} accessibilityRole="button" accessibilityLabel={`Select ${event.title}`} accessibilityState={{ selected: event._id === selected._id }} onPress={() => setSelectedId(event._id)} style={[styles.smallChip, event._id === selected._id && styles.activeChip]}><Text style={styles.label}>{index + 1}{savedIds.has(event._id) ? " ★" : ""}</Text></Pressable>)}
         </ScrollView>
         <Pressable accessibilityRole="button" accessibilityLabel={`Open ${selected.title}`} testID="map-event-card" onPress={() => router.push({ pathname: "/event/[id]", params: { id: selected._id } })} style={styles.card}>
-          <View style={styles.cardTop}><Text style={styles.eventType}>{EVENT_TYPE_META[selected.eventType].label.toUpperCase()}</Text><Text style={styles.action}>{savedIds.has(selected._id) ? "Saved ★" : "View event ↗"}</Text></View>
+          <View style={styles.cardTop}><View style={styles.kind}><EventTypeBadge eventType={selected.eventType} size={22} /><Text style={styles.eventType}>{EVENT_TYPE_META[selected.eventType].label.toUpperCase()}</Text></View><Text style={styles.action}>{savedIds.has(selected._id) ? "Saved ★" : "View event ↗"}</Text></View>
           <Text numberOfLines={2} style={styles.cardTitle}>{selected.title}</Text>
           <Text style={styles.meta}>{formatRange(selected.startTime, selected.endTime)}</Text>
           <Text style={styles.meta}>{selected.venue ?? selected.city} · {formatDistance(selected.distanceKm, false)}</Text>
@@ -155,20 +159,20 @@ export default function MapDiscovery() {
 const makeStyles = (p: Palette) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: p.bg },
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  eyebrow: { color: p.emberInk, fontSize: 10, fontWeight: "600", letterSpacing: 1.6, marginBottom: 4 },
+  eyebrow: { color: p.brandInk, fontSize: 10, fontWeight: "600", letterSpacing: 1.6, marginBottom: 4 },
   title: { ...type.screenTitle, color: p.ink },
   row: { paddingHorizontal: 20, flexDirection: "row", alignItems: "center", gap: 8, paddingBottom: 10 },
   area: { flex: 1, paddingVertical: 10 },
   label: { ...type.label, color: p.ink },
   meta: { ...type.tag, color: p.muted },
-  action: { ...type.label, color: p.emberInk },
+  action: { ...type.label, color: p.brandInk },
   button: { padding: 10, minHeight: 44, justifyContent: "center" },
   areas: { paddingHorizontal: 20, gap: 4, paddingBottom: 8 },
   chips: { flexDirection: "row", gap: 8, paddingVertical: 4 },
   filterScroll: { flexGrow: 0, paddingLeft: 20, marginBottom: 10 },
   chip: { borderRadius: radius.pill, paddingHorizontal: 12, minHeight: 38, justifyContent: "center", borderColor: p.lineStrong, borderWidth: 1, backgroundColor: p.surface },
   smallChip: { borderRadius: radius.pill, paddingHorizontal: 12, minHeight: 36, justifyContent: "center", borderColor: p.lineStrong, borderWidth: 1 },
-  activeChip: { backgroundColor: p.emberSoft, borderColor: p.ember },
+  activeChip: { backgroundColor: p.brandSoft, borderColor: p.brand },
   notice: { ...type.meta, color: p.danger, paddingHorizontal: 20, paddingBottom: 8 },
   map: { flex: 1, minHeight: 180, overflow: "hidden", backgroundColor: p.secondary },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
@@ -176,6 +180,7 @@ const makeStyles = (p: Palette) => StyleSheet.create({
   card: { backgroundColor: p.surface, borderRadius: radius.card, padding: 14, gap: 6, borderWidth: 1, borderColor: p.lineStrong },
   cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
   cardTitle: { ...type.cardTitle, color: p.ink },
+  kind: { flexDirection: "row", alignItems: "center", gap: 8 },
   eventType: { fontSize: 10, fontWeight: "600", color: p.muted, letterSpacing: 1 },
   signal: { ...type.tag, color: p.gold },
   empty: { paddingVertical: 12, gap: 6 },

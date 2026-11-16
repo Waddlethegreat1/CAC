@@ -35,7 +35,7 @@ export default function ChatScreen() {
   const [pages, setPages] = useState(1);
   const stick = useRef(true);
 
-  if (inbox === undefined) return <ActivityIndicator style={{ flex: 1, backgroundColor: colors.bg }} color={colors.ember} />;
+  if (inbox === undefined) return <ActivityIndicator style={{ flex: 1, backgroundColor: colors.bg }} color={colors.brand} />;
   const asTalent = inbox.talent.connected.find((c) => c._id === id);
   const asCompany = inbox.companies.flatMap((c) => c.connected.map((conn) => ({ ...conn, company: c.company }))).find((c) => c._id === id);
   const title = asTalent ? asTalent.company.name : asCompany ? asCompany.talent.name ?? "Talent" : "Chat";
@@ -76,7 +76,7 @@ function Pages({ connectionId, before, depth, onOlder }: { connectionId: Id<"con
   const [last, setLast] = useState(live);
   if (live !== undefined && live !== last) setLast(live);
   const page = live ?? last;
-  if (page === undefined) return <ActivityIndicator color={colors.ember} />;
+  if (page === undefined) return <ActivityIndicator color={colors.brand} />;
   return (
     <>
       {page.nextBefore !== null ? (
@@ -90,7 +90,7 @@ function Pages({ connectionId, before, depth, onOlder }: { connectionId: Id<"con
       ) : null}
       {page.messages.map((m) => (
         <View key={m._id} testID="chat-message" style={{ alignItems: m.mine ? "flex-end" : "flex-start" }}>
-          <View style={{ maxWidth: "82%", paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.md, backgroundColor: m.mine ? colors.ember : colors.surface, borderWidth: m.mine ? 0 : 0.5, borderColor: colors.line }}>
+          <View style={{ maxWidth: "82%", paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.md, backgroundColor: m.mine ? colors.brand : colors.surface, borderWidth: m.mine ? 0 : 0.5, borderColor: colors.line }}>
             <Text style={{ ...type.body, color: m.mine ? colors.white : colors.ink }}>{m.body}</Text>
           </View>
           <Text style={[styles.meta, { fontSize: 11, marginTop: 2 }]}>{m.mine ? "You" : m.senderName ?? (m.fromTalent ? "Talent" : "Company")} · {timeAgo(m.createdAt)}</Text>
@@ -157,7 +157,7 @@ function ContactCard({ contact }: { contact: { email?: string; phone?: string; l
       {rows.map((r) => (
         <Pressable key={r.label} disabled={!r.url} accessibilityRole={r.url ? "link" : "text"} onPress={() => r.url && Linking.openURL(r.url).catch(() => undefined)} style={[styles.row, styles.inline]}>
           <Text style={[styles.body, { flex: 1 }]}>{r.label}</Text>
-          <Text style={[styles.body, { color: r.url ? colors.emberInk : colors.muted }]} numberOfLines={1}>{r.value}</Text>
+          <Text style={[styles.body, { color: r.url ? colors.brandInk : colors.muted }]} numberOfLines={1}>{r.value}</Text>
         </Pressable>
       ))}
     </Card>

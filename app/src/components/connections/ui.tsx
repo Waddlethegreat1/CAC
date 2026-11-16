@@ -71,8 +71,8 @@ export function PendingVerificationNotice() {
 }
 
 export function Pill({ label, tone = "neutral" }: { label: string; tone?: "neutral" | "accent" | "success" }) {
-  const color = tone === "accent" ? colors.emberInk : tone === "success" ? colors.success : colors.muted;
-  const bg = tone === "accent" ? colors.emberSoft : tone === "success" ? "rgba(31,157,58,0.12)" : colors.secondary;
+  const color = tone === "accent" ? colors.brandInk : tone === "success" ? colors.success : colors.muted;
+  const bg = tone === "accent" ? colors.brandSoft : tone === "success" ? "rgba(31,157,58,0.12)" : colors.secondary;
   return (
     <View style={[styles.pill, { backgroundColor: bg }]}>
       <Text style={[styles.pillText, { color }]}>{label}</Text>

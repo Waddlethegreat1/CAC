@@ -17,7 +17,7 @@ type Props = {
 };
 
 export function Button({ label, onPress, variant = "primary", icon, loading, disabled, testID, style }: Props) {
-  const tint = variant === "primary" ? colors.white : variant === "outline" ? colors.ember : colors.ink;
+  const tint = variant === "primary" ? colors.white : variant === "outline" ? colors.brand : colors.ink;
   return (
     <Pressable
       testID={testID}
@@ -43,8 +43,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
-  primary: { backgroundColor: colors.ember },
-  outline: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.ember },
+  primary: { backgroundColor: colors.brand },
+  outline: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.brand },
   ghost: { backgroundColor: "transparent" },
   label: { ...type.bodyStrong },
 });
