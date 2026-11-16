@@ -1,0 +1,11 @@
+{
+  "meetup.ics": {
+    "url": "https://www.meetup.com/san-francisco-startup-networking-founders-investors/events/ical/",
+    "fetchedAt": "2026-11-16",
+    "note": "one VEVENT kept (event_317315865), robots.txt allows the path"
+  },
+  "eventbrite.json": {
+    "url": "fixtures/eventbrite/ascent-valley-78282849753 (organizer events API)",
+    "note": "event 2004492153992, the Eventbrite copy of the same night"
+  }
+}
