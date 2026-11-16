@@ -24,6 +24,7 @@ export const rawEvent = v.object({
   organizer: v.optional(v.string()),
   hosts: v.optional(v.array(v.string())),
   imageUrl: v.optional(v.string()),
+  organizerLogoUrl: v.optional(v.string()),
   sourceTags: v.optional(v.array(v.string())),
   sourceEventType: v.optional(v.string()),
 });

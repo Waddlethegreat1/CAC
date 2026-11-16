@@ -128,6 +128,7 @@ export function mergeEvents(primary: NormalizedEvent, other: NormalizedEvent): N
     isOnline: primary.isOnline && other.isOnline,
     url: primary.url,
     imageUrl: primary.imageUrl ?? other.imageUrl,
+    organizerLogoUrl: primary.organizerLogoUrl ?? other.organizerLogoUrl,
     source: primary.source,
     sourceId: primary.sourceId,
     organizer: richer(primary.organizer, other.organizer),

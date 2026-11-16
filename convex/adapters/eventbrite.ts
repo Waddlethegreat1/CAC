@@ -1,4 +1,5 @@
 import type { Adapter } from "../lib/adapter";
+import { httpsUrl } from "../lib/media";
 import type { RawEvent } from "../lib/rawEvent";
 import { toZonedIso } from "../lib/time";
 
@@ -20,7 +21,7 @@ type EventbriteEvent = {
   invite_only?: boolean;
   online_event?: boolean;
   logo?: { url?: string | null; original?: { url?: string | null } | null } | null;
-  organizer?: { name?: string | null } | null;
+  organizer?: { name?: string | null; logo?: { url?: string | null } | null } | null;
   venue?: {
     name?: string | null;
     latitude?: string | null;
@@ -55,7 +56,7 @@ export function organizerId(feedUrl: string): string {
 export function organizerEventsUrl(id: string, continuation?: string): string {
   const url = new URL(`${API}/organizers/${id}/events/`);
   url.searchParams.set("status", "live");
-  url.searchParams.set("expand", "venue,organizer");
+  url.searchParams.set("expand", "venue,organizer,organizer.logo");
   if (continuation) url.searchParams.set("continuation", continuation);
   return url.toString();
 }
@@ -96,6 +97,7 @@ export function parseEventbritePage(page: EventbritePage): RawEvent[] {
       },
       organizer: text(event.organizer?.name),
       imageUrl: text(event.logo?.original?.url) ?? text(event.logo?.url),
+      organizerLogoUrl: httpsUrl(event.organizer?.logo?.url),
     });
   }
   return events;

@@ -66,7 +66,7 @@ afterEach(() => {
 
 describe("location enrichment", () => {
   test("fills location from the Luma or Meetup event page once, and re-crawls reuse the cache", async () => {
-    const items = [raw("luma", LUMA_URL), raw("meetup", MEETUP_URL), raw("nyc", NYC_URL), raw("other", "https://example.org/e/1"), raw("online", ONLINE_URL), raw("placed", "https://luma.com/has-address", { location: { online: false, address: "Hacker Dojo, Mountain View" } })];
+    const items = [raw("luma", LUMA_URL), raw("meetup", MEETUP_URL), raw("nyc", NYC_URL), raw("other", "https://example.org/e/1"), raw("online", ONLINE_URL), raw("placed", "https://luma.com/has-address", { location: { online: false, address: "Hacker Dojo, Mountain View" }, imageUrl: "https://images.example/cover.png", organizerLogoUrl: "https://images.example/logo.png" })];
     const calls = stub({ [LUMA_URL]: lumaPage, [MEETUP_URL]: meetupPage, [NYC_URL]: NYC_PAGE, [ONLINE_URL]: ONLINE_PAGE }, () => items);
     const t = convexTest(schema, modules);
     const feedId = await t.run((ctx) => ctx.db.insert("feeds", { source: "fixture", name: "fixture", url: FEED_URL, enabled: true, intervalMinutes: 60 }));
@@ -98,7 +98,7 @@ describe("location enrichment", () => {
     stub({}, () => []);
     const t = convexTest(schema, modules);
     const targets = ["a", "b", "c"].map((id) => ({ url: "https://www.meetup.com/g/events/" + id + "/", source: "fixture", sourceId: id }));
-    expect(await t.action(internal.normalize.enrich.run, { targets, maxFetches: 2 })).toEqual({ fetched: 2, placed: 0, dropped: 0, deferred: 1 });
+    expect(await t.action(internal.normalize.enrich.run, { targets, maxFetches: 2 })).toEqual({ fetched: 2, placed: 0, dropped: 0, media: 0, deferred: 1 });
     expect((await t.run((ctx) => ctx.db.query("event_pages").collect())).map((p) => p.status)).toEqual(["error", "error"]);
   }, 15_000);
 });

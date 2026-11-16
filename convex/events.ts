@@ -1,10 +1,17 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
 import { DEFAULT_DURATION } from "./feed";
+import { hostCompany, hostCompanyFor } from "./lib/hostCompany";
 
 export const get = query({
   args: { id: v.id("events") },
   handler: (ctx, { id }) => ctx.db.get(id),
+});
+
+export const host = query({
+  args: { eventId: v.id("events") },
+  returns: v.union(hostCompany, v.null()),
+  handler: (ctx, { eventId }) => hostCompanyFor(ctx, eventId),
 });
 
 export const search = query({

@@ -1,4 +1,5 @@
 import type { Adapter } from "../lib/adapter";
+import { httpsUrl } from "../lib/media";
 import type { RawEvent, RawLocation } from "../lib/rawEvent";
 import { toZonedIso } from "../lib/time";
 
@@ -115,6 +116,7 @@ function eventFromNode(node: Node, pageUrl: string, metas: Map<string, string>):
     organizer: hosts[0],
     hosts: hosts.length > 0 ? hosts : undefined,
     imageUrl: absolute(image(node.image), pageUrl) ?? metas.get("og:image"),
+    organizerLogoUrl: organizerLogo(node.organizer, pageUrl),
   });
 }
 
@@ -196,6 +198,19 @@ function address(value: unknown): string | undefined {
 function organizers(value: unknown): string[] {
   const names = list(value).map((entry) => (typeof entry === "string" ? text(entry) : isObject(entry) ? text(entry.name) : undefined));
   return [...new Set(names.filter((name): name is string => name !== undefined))];
+}
+
+function organizerLogo(value: unknown, pageUrl: string): string | undefined {
+  for (const entry of list(value)) {
+    if (!isObject(entry) || !types(entry).some((type) => type === "Organization" || type === "Person")) continue;
+    const logo = httpsUrl(absolute(image(entry.logo) ?? image(entry.image), pageUrl));
+    if (logo) return logo;
+  }
+  return undefined;
+}
+
+export function ogImage(html: string): string | undefined {
+  return readMetas(html).get("og:image");
 }
 
 function image(value: unknown): string | undefined {

@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { hostCompany, hostCompanyFor } from "./lib/hostCompany";
 import { ended, eventDoc, investors, MAX_COMMITMENTS, RATING_SCALE, recordFor, recordsFor, saveResponse, scaledRating, scaledRatingSum, userFor, writeGoing } from "./attendanceModel";
 
 export const mine = query({
@@ -84,14 +85,17 @@ export const respond = mutation({
 
 export const history = query({
   args: { deviceId: v.string() },
-  returns: v.array(v.object({ event: eventDoc, rating: v.union(v.number(), v.null()), note: v.union(v.string(), v.null()), investors: v.union(investors, v.null()) })),
+  returns: v.array(v.object({ event: v.object({ ...eventDoc.fields, hostCompany: v.optional(hostCompany) }), rating: v.union(v.number(), v.null()), note: v.union(v.string(), v.null()), investors: v.union(investors, v.null()) })),
   handler: async (ctx, { deviceId }) => {
     const user = await userFor(ctx, deviceId);
     if (!user) return [];
     const records = await ctx.db.query("attendance").withIndex("by_user_attended", (q) => q.eq("userId", user._id).eq("attended", true)).take(MAX_COMMITMENTS);
     const rows = await Promise.all(records.map(async (r) => {
-      const event = await ctx.db.get(r.eventId);
-      return event ? { event, rating: scaledRating(r) ?? null, note: r.note ?? null, investors: r.investors ?? null } : null;
+      const doc = await ctx.db.get(r.eventId);
+      if (!doc) return null;
+      const host = await hostCompanyFor(ctx, doc._id);
+      const event = host ? { ...doc, hostCompany: host } : doc;
+      return { event, rating: scaledRating(r) ?? null, note: r.note ?? null, investors: r.investors ?? null };
     }));
     return rows.filter((r) => r !== null).sort((a, b) => b.event.startTime - a.event.startTime);
   },

@@ -77,7 +77,7 @@ describe("eventbrite adapter", () => {
     const events = await eventbriteAdapter.fetch(feed("https://www.eventbrite.com/o/ascent-valley-78282849753"), http);
     expect(events).toEqual(ascentExpected);
     expect(calls.map((c) => c.url)).toEqual([page1, page2]);
-    expect(page1).toBe("https://www.eventbriteapi.com/v3/organizers/78282849753/events/?status=live&expand=venue%2Corganizer");
+    expect(page1).toBe("https://www.eventbriteapi.com/v3/organizers/78282849753/events/?status=live&expand=venue%2Corganizer%2Corganizer.logo");
     for (const call of calls) {
       expect(call.accept).toBe("application/json");
       expect(call.headers).toEqual({ Authorization: "Bearer test-token" });
