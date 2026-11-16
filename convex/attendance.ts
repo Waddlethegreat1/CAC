@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
-import { internalQuery, mutation, query } from "./_generated/server";
-import { ended, eventDoc, investors, MAX_COMMITMENTS, recordFor, recordsFor, saveResponse, userFor, writeGoing } from "./attendanceModel";
+import { internal } from "./_generated/api";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { ended, eventDoc, investors, MAX_COMMITMENTS, RATING_SCALE, recordFor, recordsFor, saveResponse, scaledRating, scaledRatingSum, userFor, writeGoing } from "./attendanceModel";
 
 export const mine = query({
   args: { deviceId: v.string() },
@@ -11,7 +12,7 @@ export const mine = query({
   handler: async (ctx, { deviceId }) => {
     const user = await userFor(ctx, deviceId);
     if (!user) return [];
-    return (await recordsFor(ctx, user._id)).map(({ eventId, going, attended, rating, investors, note }) => ({
+    return (await recordsFor(ctx, user._id)).map((record) => ({ ...record, rating: scaledRating(record) })).map(({ eventId, going, attended, rating, investors, note }) => ({
       eventId, going, ...(attended === undefined ? {} : { attended }),
       ...(rating === undefined ? {} : { rating }), ...(investors === undefined ? {} : { investors }),
       ...(note === undefined ? {} : { note }),
@@ -72,7 +73,7 @@ export const respond = mutation({
     const record = await recordFor(ctx, user._id, eventId);
     const event = await ctx.db.get(eventId);
     if (!record?.going || !event || !ended(event, Date.now())) throw new Error("An ended commitment is required");
-    if (response.rating !== undefined && (!Number.isInteger(response.rating) || response.rating < 1 || response.rating > 5)) throw new Error("Rating must be an integer from 1 to 5");
+    if (response.rating !== undefined && (!Number.isInteger(response.rating) || response.rating < 1 || response.rating > RATING_SCALE)) throw new Error("Rating must be an integer from 1 to 10");
     if (response.attended && (response.rating === undefined || response.investors === undefined)) throw new Error("Attendance requires a rating and investor response");
     if (!response.attended && (response.rating !== undefined || response.investors !== undefined)) throw new Error("Only attendees can rate or report investors");
     if (response.note !== undefined && (Array.from(response.note).length > 240 || /[\r\n\u0085\u2028\u2029]/u.test(response.note))) throw new Error("Note must be one line of at most 240 characters");
@@ -90,7 +91,7 @@ export const history = query({
     const records = await ctx.db.query("attendance").withIndex("by_user_attended", (q) => q.eq("userId", user._id).eq("attended", true)).take(MAX_COMMITMENTS);
     const rows = await Promise.all(records.map(async (r) => {
       const event = await ctx.db.get(r.eventId);
-      return event ? { event, rating: r.rating ?? null, note: r.note ?? null, investors: r.investors ?? null } : null;
+      return event ? { event, rating: scaledRating(r) ?? null, note: r.note ?? null, investors: r.investors ?? null } : null;
     }));
     return rows.filter((r) => r !== null).sort((a, b) => b.event.startTime - a.event.startTime);
   },
@@ -98,11 +99,27 @@ export const history = query({
 
 export const aggregate = query({
   args: { eventId: v.id("events") },
-  returns: v.union(v.null(), v.object({ ratingCount: v.number(), averageWorthIt: v.number(), investorConfirmations: v.number() })),
+  returns: v.union(v.null(), v.object({ ratingCount: v.number(), averageWorthIt: v.number(), investorConfirmations: v.number(), ratingScale: v.literal(10) })),
   handler: async (ctx, { eventId }) => {
     const totals = await ctx.db.query("attendance_totals").withIndex("by_event", (q) => q.eq("eventId", eventId)).unique();
     if (!totals || totals.ratingCount < 3) return null;
-    return { ratingCount: totals.ratingCount, averageWorthIt: totals.ratingSum / totals.ratingCount, investorConfirmations: totals.investorConfirmations };
+    return { ratingCount: totals.ratingCount, averageWorthIt: scaledRatingSum(totals) / totals.ratingCount, investorConfirmations: totals.investorConfirmations, ratingScale: RATING_SCALE };
+  },
+});
+
+const MIGRATION_BATCH = 200;
+
+export const migrateRatingsTo10 = internalMutation({
+  args: {},
+  returns: v.object({ attendance: v.number(), totals: v.number(), more: v.boolean() }),
+  handler: async (ctx) => {
+    const records = await ctx.db.query("attendance").withIndex("by_rating_scale", (q) => q.eq("ratingScale", undefined)).take(MIGRATION_BATCH);
+    for (const record of records) await ctx.db.patch(record._id, { rating: scaledRating(record), ratingScale: RATING_SCALE });
+    const totals = await ctx.db.query("attendance_totals").withIndex("by_rating_scale", (q) => q.eq("ratingScale", undefined)).take(MIGRATION_BATCH);
+    for (const row of totals) await ctx.db.patch(row._id, { ratingSum: scaledRatingSum(row), ratingScale: RATING_SCALE });
+    const more = records.length === MIGRATION_BATCH || totals.length === MIGRATION_BATCH;
+    if (more) await ctx.scheduler.runAfter(0, internal.attendance.migrateRatingsTo10, {});
+    return { attendance: records.length, totals: totals.length, more };
   },
 });
 
