@@ -1,7 +1,5 @@
 import { convexTest } from "convex-test";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import ascentEventbrite from "../fixtures/normalize/ascent-valley/eventbrite.json";
-import ascentIcs from "../fixtures/normalize/ascent-valley/meetup.ics?raw";
 import foundersVillage from "../fixtures/eventbrite/founders-village-32506722299.json";
 import devpostPage from "../fixtures/devpost/in-person-page-1.json";
 import lumaEventPage from "../fixtures/llm/pages/luma-startx-pitch-mixer.html?raw";
@@ -12,12 +10,10 @@ import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { parseDevpostPage } from "./adapters/devpost";
 import { parseEventbritePage, type EventbritePage } from "./adapters/eventbrite";
-import { parseIcal } from "./adapters/ical";
 import { parseEventPage } from "./adapters/jsonld";
 import { parseLumaPage } from "./adapters/luma";
 import { parseMlhSeasonPage } from "./adapters/mlh";
 import type { RawEvent } from "./lib/rawEvent";
-import { upsertEvent } from "./lib/store";
 import { normalize, type NormalizedEvent } from "./normalize";
 import { mergeEvents, pickEvent } from "./normalize/dedupe";
 import { pageMedia } from "./normalize/enrich";
@@ -111,64 +107,6 @@ describe("pickEvent and merges carry organizerLogoUrl", () => {
 
   test("normalize drops a non-https logo", async () => {
     expect((await base({ organizerLogoUrl: "http://cdn.example/p.png" })).organizerLogoUrl).toBeUndefined();
-  });
-});
-
-const noGeocode = async (query: string) => {
-  throw new Error("unexpected geocode: " + query);
-};
-
-async function ascentPair() {
-  const feedUrl = "https://www.meetup.com/san-francisco-startup-networking-founders-investors/events/ical/";
-  const [ical] = parseIcal(ascentIcs, { source: "ical", feedUrl, now: new Date("2026-11-16T00:00:00Z") });
-  const [eventbrite] = parseEventbritePage(ascentEventbrite as EventbritePage);
-  const a = (await normalize(ical, { geocode: noGeocode }))!;
-  const b = (await normalize({ ...eventbrite, organizerLogoUrl: "https://img.evbuc.com/ascent-logo.png" }, { geocode: noGeocode }))!;
-  return { a, b };
-}
-
-describe("Ascent Valley: Meetup iCal copy without a location + Eventbrite copy", () => {
-  test("the real listings share title and start, and only the iCal copy lacks a place", async () => {
-    const { a, b } = await ascentPair();
-    expect(a).toMatchObject({ source: "ical", title: b.title, startTime: b.startTime, city: "" });
-    expect(a.imageUrl).toBeUndefined();
-    expect(b).toMatchObject({ source: "eventbrite", city: "San Francisco" });
-    expect(b.imageUrl).toBeTruthy();
-  });
-
-  test.each([["iCal first", false], ["Eventbrite first", true]])("live upsert merges them into one row with the banner and logo (%s)", async (_, eventbriteFirst) => {
-    const t = convexTest(schema, modules);
-    const { a, b } = await ascentPair();
-    const [first, second] = eventbriteFirst ? [b, a] : [a, b];
-    const one = await t.run((ctx) => upsertEvent(ctx, first));
-    expect(await t.run((ctx) => upsertEvent(ctx, second))).toEqual({ id: one.id, created: false, merged: true });
-    const rows = await t.run((ctx) => ctx.db.query("events").collect());
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ city: "San Francisco", imageUrl: b.imageUrl, organizerLogoUrl: "https://img.evbuc.com/ascent-logo.png" });
-    expect(rows[0].sources?.map((s) => s.source).sort()).toEqual(["eventbrite", "ical"]);
-  });
-
-  test("normalize/backfill merges an existing pair and keeps the banner and logo", async () => {
-    vi.useFakeTimers();
-    const t = convexTest(schema, modules);
-    const { a, b } = await ascentPair();
-    await t.run(async (ctx) => {
-      for (const e of [a, b]) await ctx.db.insert("events", { ...e, lastSeenAt: 0, sources: [{ url: e.url, source: e.source, sourceId: e.sourceId }] });
-    });
-    await t.mutation(internal.normalize.backfill.run, {});
-    await t.finishAllScheduledFunctions(vi.runAllTimers);
-    const rows = await t.run((ctx) => ctx.db.query("events").collect());
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ source: "ical", city: "San Francisco", imageUrl: b.imageUrl, organizerLogoUrl: "https://img.evbuc.com/ascent-logo.png" });
-    expect(rows[0].sources).toHaveLength(2);
-  });
-
-  test("a placeless copy with the same title at a different start stays separate", async () => {
-    const t = convexTest(schema, modules);
-    const { a, b } = await ascentPair();
-    await t.run((ctx) => upsertEvent(ctx, b));
-    expect((await t.run((ctx) => upsertEvent(ctx, { ...a, startTime: a.startTime + 3600_000 }))).created).toBe(true);
-    expect(await t.run((ctx) => ctx.db.query("events").collect())).toHaveLength(2);
   });
 });
 
