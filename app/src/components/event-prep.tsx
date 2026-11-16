@@ -54,7 +54,7 @@ export function EventPrep({ event, deviceId }: { event: Doc<"events">; deviceId:
   return (
     <View testID={past ? "followup-card" : "prep-card"} style={styles.card}>
       <View style={styles.head}>
-        <View style={styles.glyph}><SparkIcon size={20} color={colors.ember} /></View>
+        <View style={styles.glyph}><SparkIcon size={20} color={colors.brand} /></View>
         <View style={styles.grow}>
           <Text style={styles.title}>{past ? "Keep the conversation going" : "Walk in with a little confidence"}</Text>
           <Text style={styles.meta}>{past ? "Two drafts, ready to make your own" : "Your two-minute event briefing"}</Text>
@@ -111,7 +111,7 @@ export function EventPrep({ event, deviceId }: { event: Doc<"events">; deviceId:
 const styles = StyleSheet.create({
   card: { marginHorizontal: layout.screenPadding, marginTop: 16, padding: 14, borderRadius: radius.card, backgroundColor: colors.surface, gap: 12, ...shadow.card },
   head: { flexDirection: "row", alignItems: "center", gap: 10 },
-  glyph: { width: 40, height: 40, borderRadius: radius.button, backgroundColor: colors.emberSoft, alignItems: "center", justifyContent: "center" },
+  glyph: { width: 40, height: 40, borderRadius: radius.button, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center" },
   grow: { flex: 1 },
   title: { ...type.cardTitle, color: colors.ink },
   meta: { ...type.meta, color: colors.muted },
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   body: { ...type.body, color: colors.ink },
   note: { ...type.tag, color: colors.muted },
   content: { gap: 10 },
-  tip: { padding: 12, gap: 6, backgroundColor: colors.emberSoft, borderRadius: radius.button },
+  tip: { padding: 12, gap: 6, backgroundColor: colors.brandSoft, borderRadius: radius.button },
   input: { minHeight: 44, paddingHorizontal: 12, borderWidth: 1, borderColor: colors.lineStrong, borderRadius: radius.input, ...type.body, color: colors.ink },
   draft: { paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, gap: 10 },
   error: { ...type.meta, color: colors.danger },

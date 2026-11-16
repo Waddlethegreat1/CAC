@@ -43,7 +43,7 @@ export default function InvestorHome() {
   if (result === undefined) {
     return (
       <SafeAreaView style={styles.center}>
-        <ActivityIndicator color={colors.ember} />
+        <ActivityIndicator color={colors.brand} />
       </SafeAreaView>
     );
   }

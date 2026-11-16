@@ -41,7 +41,7 @@ export default function EventTalentScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScreenHeader title="Talent who went" subtitle={event?.title} fallback="/companies" />
       {talent === undefined ? (
-        <ActivityIndicator style={{ flex: 1 }} color={colors.ember} />
+        <ActivityIndicator style={{ flex: 1 }} color={colors.brand} />
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={[styles.meta, { marginTop: space.md }]}>

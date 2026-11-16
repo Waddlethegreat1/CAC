@@ -15,7 +15,7 @@ export default function Index() {
     return (
       <View style={styles.center}>
         <Brand size={36} />
-        <ActivityIndicator color={colors.ember} />
+        <ActivityIndicator color={colors.brand} />
       </View>
     );
   }

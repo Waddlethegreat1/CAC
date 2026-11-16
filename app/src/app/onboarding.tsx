@@ -30,7 +30,7 @@ const ROLES: { id: Role; icon: IconName; title: string; blurb: string }[] = [
 export default function Onboarding() {
   const deviceId = useDeviceId();
   const existing = useQuery(api.users.get, deviceId ? { deviceId } : "skip");
-  if (!deviceId || existing === undefined) return <ActivityIndicator style={{ flex: 1 }} color={colors.ember} />;
+  if (!deviceId || existing === undefined) return <ActivityIndicator style={{ flex: 1 }} color={colors.brand} />;
   return <OnboardingForm deviceId={deviceId} existing={existing} />;
 }
 
@@ -195,7 +195,7 @@ function OnboardingForm({ deviceId, existing }: { deviceId: string; existing: Do
                       style={[styles.role, on && styles.roleOn]}
                     >
                       <View style={styles.roleIcon}>
-                        <Icon name={r.icon} size={20} color={colors.ember} />
+                        <Icon name={r.icon} size={20} color={colors.brand} />
                       </View>
                       <View style={{ flex: 1, gap: 2 }}>
                         <Text style={styles.roleTitle}>{r.title}</Text>
@@ -258,7 +258,7 @@ function OnboardingForm({ deviceId, existing }: { deviceId: string; existing: Do
                 {role === "investor" ? "We'll surface student events in these spaces first" : "Pick a few. Your feed ranks events that match higher"}
               </Text>
               <View style={styles.chips}>
-                {catalog === undefined ? <ActivityIndicator color={colors.ember} /> : null}
+                {catalog === undefined ? <ActivityIndicator color={colors.brand} /> : null}
                 {catalog?.map((i) => (
                   <SelectChip
                     key={i.slug}
@@ -281,7 +281,7 @@ function OnboardingForm({ deviceId, existing }: { deviceId: string; existing: Do
                 variant="outline"
                 label={locating ? "Finding you" : "Use my location"}
                 loading={locating}
-                icon={<Icon name="locate" size={18} color={colors.ember} />}
+                icon={<Icon name="locate" size={18} color={colors.brand} />}
                 onPress={useMyLocation}
               />
               {place?.locationSource === "device" ? (
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
   head: { paddingHorizontal: layout.screenPadding, paddingTop: space.sm },
   steps: { flexDirection: "row", gap: 4, marginTop: space.md, marginBottom: space.xl },
   step: { flex: 1, height: 3, borderRadius: 2, backgroundColor: colors.secondary },
-  stepOn: { backgroundColor: colors.ember },
+  stepOn: { backgroundColor: colors.brand },
   content: { paddingHorizontal: layout.screenPadding, paddingBottom: space.xl },
   h1: { ...type.onboardingTitle, color: colors.ink, marginBottom: space.sm },
   lede: { ...type.body, color: colors.muted, marginBottom: space.xxl },
@@ -346,17 +346,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     ...shadow.card,
   },
-  roleOn: { borderColor: colors.ember, borderWidth: 1.5 },
-  roleIcon: { width: 40, height: 40, borderRadius: radius.sm, backgroundColor: colors.emberSoft, alignItems: "center", justifyContent: "center" },
+  roleOn: { borderColor: colors.brand, borderWidth: 1.5 },
+  roleIcon: { width: 40, height: 40, borderRadius: radius.sm, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center" },
   roleTitle: { ...type.bodyStrong, fontSize: 16, fontWeight: "600", color: colors.ink },
   roleBlurb: { ...type.meta, color: colors.muted },
   radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: colors.lineStrong },
-  radioOn: { borderWidth: 6, borderColor: colors.ember },
+  radioOn: { borderWidth: 6, borderColor: colors.brand },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
   section: { ...type.cardTitle, color: colors.ink, marginTop: space.xxl, marginBottom: space.xs },
   sectionLede: { ...type.meta, color: colors.muted, marginBottom: space.md },
   haveAccount: { alignSelf: "center", marginTop: space.lg, paddingVertical: space.sm },
-  haveAccountText: { ...type.label, color: colors.emberInk },
+  haveAccountText: { ...type.label, color: colors.brandInk },
   count: { ...type.meta, color: colors.subtle, marginTop: space.lg },
   located: { flexDirection: "row", alignItems: "center", gap: space.sm, marginTop: 10 },
   locatedText: { ...type.meta, color: colors.success },

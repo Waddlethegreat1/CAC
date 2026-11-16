@@ -35,7 +35,7 @@ export default function TalentMatchesScreen() {
   const express = useMutation(api.connections.expressInterestInTalent);
   const [target, setTarget] = useState<{ userId: Id<"users">; name: string } | null>(null);
 
-  if (data === undefined) return <ActivityIndicator style={{ flex: 1, backgroundColor: colors.bg }} color={colors.ember} />;
+  if (data === undefined) return <ActivityIndicator style={{ flex: 1, backgroundColor: colors.bg }} color={colors.brand} />;
   const ended = eventEnded(data.event);
   const mutual = data.matches.filter((m) => m.mutual);
   const rest = data.matches.filter((m) => !m.mutual);

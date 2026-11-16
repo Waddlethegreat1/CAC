@@ -40,8 +40,8 @@ const styles = StyleSheet.create({
   },
   interest: { height: layout.interestChipHeight, paddingHorizontal: 14 },
   filter: { height: layout.filterChipHeight, paddingHorizontal: 12 },
-  selected: { backgroundColor: colors.emberSoft, borderColor: colors.ember, borderWidth: 1 },
+  selected: { backgroundColor: colors.brandSoft, borderColor: colors.brand, borderWidth: 1 },
   label: { fontSize: 14, color: colors.ink },
   filterLabel: { fontSize: 13 },
-  selectedLabel: { color: colors.emberInk, fontWeight: "500" },
+  selectedLabel: { color: colors.brandInk, fontWeight: "500" },
 });

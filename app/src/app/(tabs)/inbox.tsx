@@ -40,8 +40,8 @@ export default function InboxScreen() {
         <Text style={{ ...type.screenTitle, color: colors.ink, flex: 1 }} accessibilityRole="header">Inbox</Text>
         {host?.verified || host?.role === "host" ? (
           <Pressable testID={host.verified ? "open-companies" : "open-verify"} accessibilityRole="button" onPress={() => router.push(host.verified ? "/companies" : "/host/verify")} style={[styles.inline, { minHeight: layout.tapTarget }]}>
-            <Text style={{ ...type.label, color: colors.emberInk }}>{host.verified ? "Companies" : "Verify work email"}</Text>
-            <Icon name="chevron-right" size={16} color={colors.emberInk} />
+            <Text style={{ ...type.label, color: colors.brandInk }}>{host.verified ? "Companies" : "Verify work email"}</Text>
+            <Icon name="chevron-right" size={16} color={colors.brandInk} />
           </Pressable>
         ) : null}
       </View>
@@ -58,7 +58,7 @@ export default function InboxScreen() {
         />
       </View>
       {inbox === undefined ? (
-        <ActivityIndicator style={{ flex: 1 }} color={colors.ember} />
+        <ActivityIndicator style={{ flex: 1 }} color={colors.brand} />
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           {inbox.talent[bucket].length ? (

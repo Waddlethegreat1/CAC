@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
   row: { paddingHorizontal: layout.screenPadding, gap: layout.cardGap },
   card: { ...shadow.card, width: 248, padding: layout.cardPadding, gap: 4, borderRadius: radius.card, backgroundColor: colors.surface, borderColor: colors.goldSoft, borderWidth: 1 },
   top: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
-  when: { ...type.tag, flex: 1, fontWeight: "500", color: colors.ember },
+  when: { ...type.tag, flex: 1, fontWeight: "500", color: colors.brand },
   title: { ...type.cardTitle, color: colors.ink, minHeight: 40 },
   sub: { ...type.meta, color: colors.muted },
   reason: { ...type.tag, color: colors.gold, fontWeight: "500", marginTop: 2 },

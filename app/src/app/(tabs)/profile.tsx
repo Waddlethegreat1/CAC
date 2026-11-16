@@ -31,7 +31,7 @@ export default function ProfileScreen() {
         Profile
       </Text>
       {user === undefined ? (
-        <ActivityIndicator style={{ flex: 1 }} color={colors.ember} />
+        <ActivityIndicator style={{ flex: 1 }} color={colors.brand} />
       ) : user === null ? (
         <View style={styles.missing}>
           <Text style={styles.body}>No profile on this device yet</Text>
@@ -310,7 +310,7 @@ function ProfileForm({ user }: { user: User }) {
               variant="outline"
               label={locating ? "Finding you" : "Use my location"}
               loading={locating}
-              icon={<Icon name="locate" size={18} color={colors.ember} />}
+              icon={<Icon name="locate" size={18} color={colors.brand} />}
               onPress={useMyLocation}
             />
             <View style={styles.chips}>

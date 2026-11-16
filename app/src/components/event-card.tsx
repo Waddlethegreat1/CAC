@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { EventTypeBadge } from "@/components/event-type-icon";
 import { InvestorBadge } from "@/components/investor-badge";
 import { GoingButton } from "@/components/attendance";
 import { colors, EVENT_TYPE_META, layout, radius, shadow, type } from "@/constants/theme";
@@ -31,7 +32,7 @@ export function EventCard({ event, accessory, dimmed }: Props) {
   const badge = dateBadge(event.startTime);
   const where = event.distanceKm === undefined && !event.isOnline ? event.city : formatDistance(event.distanceKm ?? null, event.isOnline);
   const matched = (event.matched ?? []).slice(0, 2).map(interestLabel);
-  const tags = matched.length ? matched : [EVENT_TYPE_META[event.eventType].label];
+  const tags = [...matched];
   if (event.audience?.includes("students")) tags.push("Student-led");
   return (
     <View style={[styles.card, dimmed && styles.dimmed]}>
@@ -47,6 +48,10 @@ export function EventCard({ event, accessory, dimmed }: Props) {
           <Text style={styles.day}>{badge.day}</Text>
         </View>
         <View style={styles.body}>
+          <View style={styles.kind}>
+            <EventTypeBadge eventType={event.eventType} size={20} />
+            <Text style={styles.kindText}>{EVENT_TYPE_META[event.eventType].label}</Text>
+          </View>
           <Text style={styles.title} numberOfLines={2}>
             {event.title}
           </Text>
@@ -77,9 +82,11 @@ const styles = StyleSheet.create({
   accessory: { position: "absolute", top: 8, right: 8 },
   dimmed: { opacity: 0.6 },
   tile: { width: 52, height: 56, borderRadius: radius.sm, backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center" },
-  month: { fontSize: 11, fontWeight: "600", letterSpacing: 0.3, color: colors.ember },
+  month: { fontSize: 11, fontWeight: "600", letterSpacing: 0.3, color: colors.brand },
   day: { fontSize: 22, fontWeight: "600", lineHeight: 24, color: colors.ink, marginTop: 1, ...type.numeric },
   body: { flex: 1, minWidth: 0, gap: 4 },
+  kind: { flexDirection: "row", alignItems: "center", gap: 6 },
+  kindText: { ...type.tag, fontWeight: "500", color: colors.muted },
   title: { ...type.cardTitle, color: colors.ink, letterSpacing: -0.15 },
   sub: { ...type.meta, ...type.numeric, color: colors.muted },
   row: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 4 },
