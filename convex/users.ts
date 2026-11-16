@@ -43,6 +43,7 @@ export const upsert = mutation({
       ...args, radiusKm: args.radiusKm ?? existing?.radiusKm, updatedAt: Date.now(),
       workEmail: existing?.workEmail, workDomain: existing?.workDomain,
       workEmailVerifiedAt: existing?.workEmailVerifiedAt, workEmailVerifiedVia: existing?.workEmailVerifiedVia,
+      friendCode: existing?.friendCode,
     };
     for (const field of CONTACT_FIELDS) {
       const raw = args[field];

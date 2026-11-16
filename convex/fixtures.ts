@@ -4,6 +4,7 @@ import type { Id } from "./_generated/dataModel";
 import { internalMutation, mutation, type MutationCtx } from "./_generated/server";
 import { ensureUser, writeGoing } from "./attendanceModel";
 import { nextMessageTime } from "./chat";
+import { deleteFriendshipsOf, friendshipBetween } from "./lib/friends";
 import { requireCaller } from "./lib/identity";
 import { claimOf, cleanText, connectionStatus, endOf, fail, MAX_BODY, membershipOf } from "./lib/connections";
 import { isFixtureUrl, PAST_TEST_EVENT_ID, PAST_TEST_EVENT_TITLE } from "./lib/fixtures";
@@ -96,6 +97,7 @@ async function purgeMatchCompany(ctx: MutationCtx) {
       ctx.db.query("email_verifications").withIndex("by_user", (q) => q.eq("userId", member._id)).collect(),
     ]);
     for (const row of rows.flat()) await ctx.db.delete(row._id);
+    await deleteFriendshipsOf(ctx, member._id);
     await ctx.db.delete(member._id);
   }
   return false;
@@ -132,6 +134,18 @@ async function dropConnection(ctx: MutationCtx, connectionId: Id<"connections">)
 
 async function dropMessages(ctx: MutationCtx, connectionId: Id<"connections">) {
   for (const message of await ctx.db.query("messages").withIndex("by_connection", (q) => q.eq("connectionId", connectionId)).collect()) await ctx.db.delete(message._id);
+}
+
+async function upsertDemoTalent(ctx: MutationCtx, i: number, now: number) {
+  const profile = DEMO_TALENT[i];
+  const deviceId = `${DEMO_TALENT_PREFIX}${i + 1}`;
+  const fields = { role: "student" as const, ...profile, updatedAt: now };
+  const found = await ctx.db.query("users").withIndex("by_device", (q) => q.eq("deviceId", deviceId)).unique();
+  const userId = found?._id ?? await ctx.db.insert("users", {
+    deviceId, interests: ["ai", "startups"], city: "San Francisco", lat: 37.7749, lng: -122.4194, locationSource: "city", ...fields,
+  });
+  if (found) await ctx.db.patch(userId, fields);
+  return { userId, deviceId, name: profile.name };
 }
 
 const demoCompany = (ctx: MutationCtx) => ctx.db.query("companies").withIndex("by_slug", (q) => q.eq("slug", DEMO_COMPANY.slug)).unique();
@@ -182,18 +196,12 @@ export const seedHostDemo = mutation({
 
     const talent = [];
     let latest = 0;
-    for (const [i, profile] of DEMO_TALENT.entries()) {
-      const talentDevice = `${DEMO_TALENT_PREFIX}${i + 1}`;
-      const fields = { role: "student" as const, ...profile, updatedAt: now };
-      const found = await ctx.db.query("users").withIndex("by_device", (q) => q.eq("deviceId", talentDevice)).unique();
-      const talentId = found?._id ?? await ctx.db.insert("users", {
-        deviceId: talentDevice, interests: ["ai", "startups"], city: "San Francisco", lat: 37.7749, lng: -122.4194, locationSource: "city", ...fields,
-      });
-      if (found) await ctx.db.patch(talentId, fields);
-      const record = (await ctx.db.get((await writeGoing(ctx, talentId, eventId, true))!))!;
+    for (let i = 0; i < DEMO_TALENT.length; i++) {
+      const person = await upsertDemoTalent(ctx, i, now);
+      const record = (await ctx.db.get((await writeGoing(ctx, person.userId, eventId, true))!))!;
       if (record.attended === false) await ctx.db.patch(record._id, { attended: undefined });
       latest = Math.max(latest, record._creationTime);
-      talent.push({ userId: talentId, deviceId: talentDevice, name: profile.name });
+      talent.push(person);
     }
     const event = (await ctx.db.get(eventId))!;
     if (latest >= endOf(event)) {
@@ -243,6 +251,50 @@ export const seedHostDemo = mutation({
   },
 });
 
+const FRIENDS_EVENT_ID = "cac-friends-demo-event";
+
+export const seedFriendsDemo = mutation({
+  args: { deviceId: v.string() },
+  returns: v.object({ friendUserIds: v.array(v.id("users")), incomingRequestId: v.id("friendships"), goingEventId: v.id("events") }),
+  handler: async (ctx, { deviceId }) => {
+    if (process.env.ENABLE_TEST_FIXTURES !== "1") throw new Error("seedFriendsDemo requires ENABLE_TEST_FIXTURES=1");
+    if (deviceId.startsWith("fixture-")) throw new Error("seedFriendsDemo needs a demo device, not a fixture device");
+    const now = Date.now();
+    const userId = await ensureUser(ctx, deviceId);
+    const [first, second, incoming] = await Promise.all([0, 1, 2].map((i) => upsertDemoTalent(ctx, i, now)));
+
+    const link = async (talentId: Id<"users">, status: "pending" | "accepted") => {
+      const fields = { requesterId: talentId, addresseeId: userId, status, createdAt: now - 2 * HOUR, respondedAt: status === "accepted" ? now - HOUR : undefined };
+      const existing = await friendshipBetween(ctx, talentId, userId);
+      if (!existing) return ctx.db.insert("friendships", fields);
+      await ctx.db.replace(existing._id, fields);
+      return existing._id;
+    };
+    await link(first.userId, "accepted");
+    await link(second.userId, "accepted");
+    const incomingRequestId = await link(incoming.userId, "pending");
+
+    const existing = await ctx.db
+      .query("events")
+      .withIndex("by_source_sourceId", (q) => q.eq("source", FIXTURE_SOURCE).eq("sourceId", FRIENDS_EVENT_ID))
+      .unique();
+    const goingEventId = existing?._id ?? await ctx.db.insert("events", {
+      title: "[TEST] Friends demo hack night",
+      description: "Synthetic test data for the CAC friends demo, not a real event. An upcoming hack night a demo friend is going to.",
+      startTime: now + 48 * HOUR, endTime: now + 51 * HOUR, timezone: "America/Los_Angeles",
+      venue: "CAC Test Venue", address: "1 Market St, San Francisco, CA 94105", lat: 37.7941, lng: -122.3951,
+      city: "San Francisco", isOnline: false, url: `https://example.com/${FRIENDS_EVENT_ID}`,
+      source: FIXTURE_SOURCE, sourceId: FRIENDS_EVENT_ID, organizer: "CAC test fixtures", hosts: [], tags: ["test"],
+      eventType: "hackathon", audience: ["students"], investorScore: 0, investorSignals: [], lastSeenAt: now, synthetic: true,
+    });
+    const event = (await ctx.db.get(goingEventId))!;
+    if (event.startTime <= now) await ctx.db.patch(goingEventId, { startTime: now + 48 * HOUR, endTime: now + 51 * HOUR });
+    await writeGoing(ctx, first.userId, goingEventId, true);
+
+    return { friendUserIds: [first.userId, second.userId], incomingRequestId, goingEventId };
+  },
+});
+
 export const demoTalentRespond = mutation({
   args: { deviceId: v.string(), connectionId: v.id("connections"), accept: v.boolean(), message: v.optional(v.string()) },
   returns: v.object({ status: connectionStatus }),
@@ -283,6 +335,7 @@ async function purgeDemoCompany(ctx: MutationCtx) {
     const talent = await ctx.db.query("users").withIndex("by_device", (q) => q.eq("deviceId", `${DEMO_TALENT_PREFIX}${i}`)).unique();
     if (!talent) continue;
     for (const connection of await ctx.db.query("connections").withIndex("by_talent_status", (q) => q.eq("talentUserId", talent._id)).collect()) await dropConnection(ctx, connection._id);
+    await deleteFriendshipsOf(ctx, talent._id);
     const rows = await Promise.all([
       ctx.db.query("attendance").withIndex("by_user_event", (q) => q.eq("userId", talent._id)).collect(),
       ctx.db.query("saves").withIndex("by_user", (q) => q.eq("userId", talent._id)).collect(),
