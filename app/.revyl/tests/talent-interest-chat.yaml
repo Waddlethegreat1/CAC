@@ -1,3 +1,11 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: 7845a9a8-84ed-42a1-9bd5-5f2aa196ddb0
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-16T00:00:53Z"
+    checksum: 5da3734a71a3fba8be0046f9933525a849933e686215609987d0ec43597c10f6
 test:
     metadata:
         name: talent-interest-chat
@@ -7,29 +15,22 @@ test:
     build:
         name: Scout iOS
     blocks:
-        - type: instructions
-          step_description: This test needs a fixture on the target deployment. A verified company named Acme Labs must have claimed an ended event that this installation's Talent profile marked Going before it ended, and a member of Acme Labs must be available to accept from a second device or the dashboard. If onboarding appears, choose Talent, fill in About you, and finish onboarding.
-        - type: instructions
-          step_description: Open Profile, scroll to Events attended or open the ended Acme Labs event from the feed or Saved, and open its event detail.
+        - type: module_import
+          module: onboard-student
+        - type: manual
+          step_type: navigate
+          step_description: cac-scout://dev/seed-talent-match
         - type: validation
-          step_description: The ended event shows no I'm going button. A Connect with the hosts section lists Acme Labs with a Verified badge and an Interested in Acme Labs button.
+          step_description: The ended event "[TEST] Scout fixture demo day" opens with no I'm going button. A Connect with the hosts section lists Scout Test Co with a Verified badge and an "Interested in Scout Test Co" button.
         - type: instructions
-          step_description: Tap Interested in Acme Labs.
+          step_description: Tap "Interested in Scout Test Co".
         - type: validation
-          step_description: A sheet titled Interested in Acme Labs explains that they will see your name and that you went, and that contact details stay private unless you share them after connecting. It has an optional message box with a 0/500 counter and a Send interest button.
+          step_description: A sheet titled "Interested in Scout Test Co" explains that they will see your name and that you went, and that contact details stay private unless you share them after connecting. It has an optional message box with a 0/500 counter and a "Send interest" button.
         - type: instructions
-          step_description: Type Loved the robotics track in the message box and tap Send interest.
+          step_description: Type "Loved the demo day" in the message box and tap "Send interest".
         - type: validation
-          step_description: The sheet closes and the Acme Labs row says Interest sent. Waiting for a reply.
+          step_description: The sheet closes and the Scout Test Co row says "Interest sent. Waiting for a reply".
         - type: instructions
           step_description: Open the Inbox tab and tap Outgoing.
         - type: validation
-          step_description: Outgoing lists Acme Labs with the quoted message Loved the robotics track, a Withdraw button, and a Share my contact details switch that is off with copy explaining what is shared and when.
-        - type: instructions
-          step_description: Have an Acme Labs member accept the request, then wait a few seconds and tap Connected.
-        - type: validation
-          step_description: Connected lists Acme Labs with Open chat and End and block buttons.
-        - type: instructions
-          step_description: Tap Open chat, type Hello from Scout in the message box, and tap Send.
-        - type: validation
-          step_description: The chat shows Hello from Scout as your own message at the bottom, labeled You. The Share my contact details switch is shown above the conversation and is still off.
+          step_description: Outgoing lists Scout Test Co with the quoted message "Loved the demo day", a Withdraw button, and a "Share my contact details" switch that is off.
