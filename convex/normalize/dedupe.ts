@@ -92,6 +92,9 @@ export async function findDuplicate(ctx: Pick<QueryCtx, "db">, event: Normalized
 
   const nearby = window.filter(candidate);
   const place = placeOf(event);
+  const title = normalizeTitle(event.title);
+  const unplaced = nearby.find((d) => (!place || !placeOf(d)) && d.startTime === event.startTime && normalizeTitle(d.title) === title);
+  if (unplaced) return unplaced;
   if (!place) return null;
   let best: { doc: Doc<"events">; score: number } | null = null;
   for (const doc of nearby) {
@@ -128,6 +131,7 @@ export function mergeEvents(primary: NormalizedEvent, other: NormalizedEvent): N
     isOnline: primary.isOnline && other.isOnline,
     url: primary.url,
     imageUrl: primary.imageUrl ?? other.imageUrl,
+    organizerLogoUrl: primary.organizerLogoUrl ?? other.organizerLogoUrl,
     source: primary.source,
     sourceId: primary.sourceId,
     organizer: richer(primary.organizer, other.organizer),

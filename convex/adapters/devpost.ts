@@ -1,4 +1,5 @@
 import type { Adapter } from "../lib/adapter";
+import { httpsUrl } from "../lib/media";
 import type { RawEvent } from "../lib/rawEvent";
 import { toZonedIso, zonedToUtc } from "../lib/time";
 
@@ -169,6 +170,7 @@ export function parseDevpostPage(json: { hackathons?: DevpostHackathon[] }): Raw
       location: online ? { online: true } : { online: false, ...parseDevpostLocation(place) },
       organizer: h.organization_name ?? undefined,
       imageUrl: h.thumbnail_url ? (h.thumbnail_url.startsWith("//") ? `https:${h.thumbnail_url}` : h.thumbnail_url) : undefined,
+      organizerLogoUrl: httpsUrl(h.thumbnail_url),
       sourceTags: themes,
       sourceEventType: "hackathon",
     });

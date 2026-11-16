@@ -1,5 +1,6 @@
 import type { Infer } from "convex/values";
 import { geocodeQuery, inBayArea, lookupCity, nearestCity, type GeoHit, type Geocoder } from "../lib/geo";
+import { httpsUrl } from "../lib/media";
 import type { RawEvent, RawLocation } from "../lib/rawEvent";
 import { isRelevant, rulesEnricher, type Enricher } from "../lib/tagger";
 import type { normalizedEvent } from "../schema";
@@ -61,6 +62,7 @@ export async function normalize(raw: RawEvent, { enricher = rulesEnricher, geoco
     isOnline: loc.online,
     url: raw.url,
     imageUrl: raw.imageUrl,
+    organizerLogoUrl: httpsUrl(raw.organizerLogoUrl),
     source: raw.source,
     sourceId: raw.sourceId,
     organizer: raw.organizer,

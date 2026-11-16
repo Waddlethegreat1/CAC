@@ -1,4 +1,5 @@
 import type { Adapter } from "../lib/adapter";
+import { httpsUrl } from "../lib/media";
 import type { RawEvent } from "../lib/rawEvent";
 import { toZonedIso } from "../lib/time";
 
@@ -23,8 +24,8 @@ type LumaEntry = {
       short_address?: string;
     } | null;
   };
-  calendar?: { name?: string; is_personal?: boolean } | null;
-  hosts?: { name?: string | null }[];
+  calendar?: { name?: string; is_personal?: boolean; avatar_url?: string | null } | null;
+  hosts?: { name?: string | null; avatar_url?: string | null }[];
 };
 
 function findEntries(node: unknown, out: LumaEntry[]): LumaEntry[] {
@@ -81,6 +82,7 @@ export function parseLumaPage(html: string): RawEvent[] {
       organizer: calendarName ?? hostNames[0],
       hosts: hostNames,
       imageUrl: event.cover_url,
+      organizerLogoUrl: calendar && !calendar.is_personal ? httpsUrl(calendar.avatar_url) : httpsUrl(hosts?.[0]?.avatar_url),
     });
   }
   return events;

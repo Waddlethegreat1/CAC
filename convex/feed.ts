@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
+import { withHostCompanies } from "./lib/hostCompany";
 import { INVESTORS_LIKELY_MIN, rankEvents } from "./lib/ranking";
 
 const DAY = 86_400_000;
@@ -50,7 +51,7 @@ export const ranked = query({
       .slice(0, 60);
     return {
       city: user.city,
-      events: ranked.map(({ event, score, distanceKm, matched }) => ({
+      events: await withHostCompanies(ctx, ranked.map(({ event, score, distanceKm, matched }) => ({
         _id: event._id,
         title: event.title,
         startTime: event.startTime,
@@ -61,6 +62,7 @@ export const ranked = query({
         lng: event.lng,
         isOnline: event.isOnline,
         imageUrl: event.imageUrl,
+        organizerLogoUrl: event.organizerLogoUrl,
         organizer: event.organizer,
         eventType: event.eventType,
         investorScore: event.investorScore,
@@ -70,7 +72,7 @@ export const ranked = query({
         score,
         distanceKm,
         matched,
-      })),
+      }))),
     };
   },
 });

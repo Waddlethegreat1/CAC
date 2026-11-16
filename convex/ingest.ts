@@ -9,7 +9,7 @@ import { rawEvent } from "./lib/rawEvent";
 import { ensureDefaults, markListingsGone, upsertEvent, upsertRawListing } from "./lib/store";
 import { normalize } from "./normalize";
 import { embedderFromEnv } from "./normalize/embed";
-import { enrichTarget, isEnrichable, needsPlace, readPage, type EnrichTarget } from "./normalize/enrich";
+import { enrichTarget, isEnrichable, mediaFrom, needsFetch, needsMedia, needsPlace, readPage, type EnrichTarget } from "./normalize/enrich";
 import { nominatimGeocoder } from "./normalize/geocode";
 import { normalizedEvent } from "./schema";
 
@@ -44,11 +44,11 @@ export const store = internalMutation({
     for (const { raw, event } of items) {
       const rawListingId = await upsertRawListing(ctx, raw, feedId);
       let kept = event;
-      if (kept && needsPlace(kept) && isEnrichable(kept.url)) {
+      if (kept && (needsPlace(kept) || needsMedia(kept)) && isEnrichable(kept.url)) {
         const page = await readPage(ctx, kept.url);
-        if (!page) enrich.push({ url: kept.url, source: kept.source, sourceId: kept.sourceId });
-        else if (page.outsideBayArea) kept = null;
-        else if (page.place) kept = { ...kept, ...page.place };
+        if (needsFetch(page, kept)) enrich.push({ url: kept.url, source: kept.source, sourceId: kept.sourceId });
+        if (page && needsPlace(kept) && page.outsideBayArea) kept = null;
+        else if (page) kept = { ...kept, ...(needsPlace(kept) ? page.place : undefined), ...mediaFrom(page, kept) };
       }
       if (kept) await upsertEvent(ctx, kept, rawListingId);
       else dropped.push(rawListingId);
@@ -131,6 +131,29 @@ export const runFeed = internalAction({
       if (status === "skipped_robots") return { fetched: 0, kept: 0 };
       throw err;
     }
+  },
+});
+
+export const RECRAWL_SOURCES = ["luma", "eventbrite", "mlh", "devpost"];
+
+export const recrawl = internalMutation({
+  args: { sources: v.optional(v.array(v.string())) },
+  returns: v.array(v.string()),
+  handler: async (ctx, { sources = RECRAWL_SOURCES }) => {
+    const now = Date.now();
+    const names: string[] = [];
+    for (const source of sources) {
+      const feeds = await ctx.db
+        .query("feeds")
+        .withIndex("by_source", (q) => q.eq("source", source))
+        .take(500);
+      for (const feed of feeds.filter((f) => f.enabled)) {
+        await ctx.db.patch(feed._id, { nextFetchAt: now + feed.intervalMinutes * MINUTE });
+        await ctx.scheduler.runAfter(0, internal.ingest.runFeed, { feedId: feed._id });
+        names.push(feed.name);
+      }
+    }
+    return names;
   },
 });
 

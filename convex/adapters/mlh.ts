@@ -1,4 +1,5 @@
 import type { Adapter } from "../lib/adapter";
+import { httpsUrl } from "../lib/media";
 import type { RawEvent } from "../lib/rawEvent";
 import { toZonedIso } from "../lib/time";
 
@@ -64,6 +65,7 @@ export function parseMlhSeasonPage(html: string): RawEvent[] {
         },
         organizer: clean(event.organizationName),
         imageUrl: clean(event.backgroundUrl) ?? clean(event.logoUrl),
+        organizerLogoUrl: httpsUrl(event.logoUrl),
         sourceTags: event.customFields?.hackathon_focus ?? [],
         sourceEventType: "hackathon",
       },

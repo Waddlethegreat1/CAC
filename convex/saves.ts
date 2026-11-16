@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import type { QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
+import { withHostCompanies } from "./lib/hostCompany";
 
 const userFor = (ctx: QueryCtx, deviceId: string) =>
   ctx.db
@@ -52,6 +53,6 @@ export const list = query({
       .order("desc")
       .take(100);
     const events = await Promise.all(saves.map((s) => ctx.db.get(s.eventId)));
-    return events.filter((e) => e !== null).sort((a, b) => a.startTime - b.startTime);
+    return withHostCompanies(ctx, events.filter((e) => e !== null).sort((a, b) => a.startTime - b.startTime));
   },
 });
