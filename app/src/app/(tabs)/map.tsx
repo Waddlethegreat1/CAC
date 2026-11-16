@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { EventThumb, HostLine } from "@/components/event-media";
 import { EventTypeBadge } from "@/components/event-type-icon";
 import EventMap from "@/components/map/event-map";
 import { mapEvents, markerGroups, selectedEvent } from "@/components/map/model";
@@ -144,9 +145,15 @@ export default function MapDiscovery() {
         </ScrollView>
         <Pressable accessibilityRole="button" accessibilityLabel={`Open ${selected.title}`} testID="map-event-card" onPress={() => router.push({ pathname: "/event/[id]", params: { id: selected._id } })} style={styles.card}>
           <View style={styles.cardTop}><View style={styles.kind}><EventTypeBadge eventType={selected.eventType} size={22} /><Text style={styles.eventType}>{EVENT_TYPE_META[selected.eventType].label.toUpperCase()}</Text></View><Text style={styles.action}>{savedIds.has(selected._id) ? "Saved ★" : "View event ↗"}</Text></View>
-          <Text numberOfLines={2} style={styles.cardTitle}>{selected.title}</Text>
-          <Text style={styles.meta}>{formatRange(selected.startTime, selected.endTime)}</Text>
-          <Text style={styles.meta}>{selected.venue ?? selected.city} · {formatDistance(selected.distanceKm, false)}</Text>
+          <View style={styles.cardBody}>
+            <EventThumb testID="map-event-thumb" event={selected} size={64} />
+            <View style={styles.cardText}>
+              <Text numberOfLines={2} style={styles.cardTitle}>{selected.title}</Text>
+              <HostLine event={selected} size={16} palette={palette} />
+              <Text style={styles.meta}>{formatRange(selected.startTime, selected.endTime)}</Text>
+              <Text numberOfLines={1} style={styles.meta}>{selected.venue ?? selected.city} · {formatDistance(selected.distanceKm, false)}</Text>
+            </View>
+          </View>
           <Text style={selected.investorScore >= 70 ? styles.signal : styles.meta}>{selected.investorScore >= 70 ? "↗ Investors likely" : "Investor signal"} · {selected.investorScore}/100 · estimate, not attendance</Text>
         </Pressable>
         {Platform.OS === "android" && <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(`https://www.openstreetmap.org/?mlat=${selected.lat}&mlon=${selected.lng}#map=16/${selected.lat}/${selected.lng}`)} style={styles.button}><Text style={styles.action}>Open selected event on map ↗</Text></Pressable>}
@@ -180,6 +187,8 @@ const makeStyles = (p: Palette) => StyleSheet.create({
   card: { backgroundColor: p.surface, borderRadius: radius.card, padding: 14, gap: 6, borderWidth: 1, borderColor: p.lineStrong },
   cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
   cardTitle: { ...type.cardTitle, color: p.ink },
+  cardBody: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
+  cardText: { flex: 1, minWidth: 0, gap: 4 },
   kind: { flexDirection: "row", alignItems: "center", gap: 8 },
   eventType: { fontSize: 10, fontWeight: "600", color: p.muted, letterSpacing: 1 },
   signal: { ...type.tag, color: p.gold },

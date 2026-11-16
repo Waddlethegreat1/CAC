@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AppState, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { Button } from "@/components/button";
+import { EventThumb, HostLine } from "@/components/event-media";
 import { SelectChip } from "@/components/select-chip";
 import { colors, layout, radius, shadow, type } from "@/constants/theme";
 import { api } from "@/convex/_generated/api";
@@ -91,7 +92,13 @@ function CheckIn({ event }: { event: Doc<"events"> }) {
     <View testID="attendance-prompt" style={styles.card}>
       <Text style={styles.eyebrow}>THE ROOM, REVIEWED</Text>
       <Text style={styles.heading}>{attended ? "Was it worth it?" : "Did you make it?"}</Text>
-      <Text style={styles.eventTitle}>{event.title}</Text>
+      <View style={styles.checkInEvent}>
+        <EventThumb event={event} size={44} />
+        <View style={styles.historyText}>
+          <Text style={styles.eventTitle}>{event.title}</Text>
+          <HostLine event={event} size={16} />
+        </View>
+      </View>
       {!attended ? (
         <View style={styles.row}>
           <Button testID="attendance-no" label="Didn't go" variant="outline" disabled={busy} style={styles.half} onPress={() => void send("no")} />
@@ -162,9 +169,13 @@ export function AttendanceHistory() {
       <Text style={styles.meta}>Your private, self-reported attendance record</Text>
       {history === undefined ? <Text style={styles.meta}>Loading your history…</Text> : history.length === 0 ? <Text style={styles.meta}>Your first room is waiting. Mark an event Going, then check in after it ends</Text> : history.map((item) => (
         <Pressable key={item.event._id} accessibilityRole="button" onPress={() => router.push({ pathname: "/event/[id]", params: { id: item.event._id } })} style={styles.historyItem}>
-          <Text style={styles.eventTitle}>{item.event.title}</Text>
-          <Text style={styles.meta}>{relativeDay(item.event.startTime, item.event.endTime)} · {item.rating ?? "—"}/10 worth it</Text>
-          {item.note ? <Text style={styles.note}>{item.note}</Text> : null}
+          <EventThumb event={item.event} size={56} />
+          <View style={styles.historyText}>
+            <Text style={styles.eventTitle}>{item.event.title}</Text>
+            <HostLine event={item.event} size={16} />
+            <Text style={styles.meta}>{relativeDay(item.event.startTime, item.event.endTime)} · {item.rating ?? "—"}/10 worth it</Text>
+            {item.note ? <Text style={styles.note}>{item.note}</Text> : null}
+          </View>
         </Pressable>
       ))}
     </View>
@@ -192,6 +203,8 @@ const styles = StyleSheet.create({
   goingLabel: { ...type.label, color: colors.brandInk },
   aggregate: { gap: 6, paddingTop: 12, marginTop: 8, borderTopWidth: 0.5, borderColor: colors.lineStrong },
   confirmed: { ...type.meta, color: colors.gold },
-  historyItem: { padding: 14, borderRadius: radius.card, backgroundColor: colors.surface, gap: 6, ...shadow.card },
+  historyItem: { flexDirection: "row", alignItems: "flex-start", padding: 14, borderRadius: radius.card, backgroundColor: colors.surface, gap: 12, ...shadow.card },
+  historyText: { flex: 1, minWidth: 0, gap: 4 },
+  checkInEvent: { flexDirection: "row", alignItems: "center", gap: 10 },
   note: { ...type.meta, color: colors.ink },
 });
