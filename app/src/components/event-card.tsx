@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { EventThumb, HostLine, type HostCompany } from "@/components/event-media";
 import { EventTypeBadge } from "@/components/event-type-icon";
 import { InvestorBadge } from "@/components/investor-badge";
 import { GoingButton } from "@/components/attendance";
@@ -22,6 +23,10 @@ export type CardEvent = {
   distanceKm?: number | null;
   matched?: string[];
   audience?: Doc<"events">["audience"];
+  imageUrl?: string;
+  organizer?: string;
+  organizerLogoUrl?: string;
+  hostCompany?: HostCompany;
 };
 
 const interestLabel = (id: string) => INTERESTS.find((i) => i.id === id)?.label ?? id;
@@ -43,10 +48,12 @@ export function EventCard({ event, accessory, dimmed }: Props) {
         onPress={() => router.push({ pathname: "/event/[id]", params: { id: event._id } })}
         style={({ pressed }) => [styles.press, !!accessory && { paddingRight: 44 }, pressed && styles.pressed]}
       >
-        <View style={styles.tile}>
-          <Text style={styles.month}>{badge.month}</Text>
-          <Text style={styles.day}>{badge.day}</Text>
-        </View>
+        <EventThumb testID={`event-thumb-${event._id}`} event={event} size={72}>
+          <View style={styles.date}>
+            <Text style={styles.month}>{badge.month}</Text>
+            <Text style={styles.day}>{badge.day}</Text>
+          </View>
+        </EventThumb>
         <View style={styles.body}>
           <View style={styles.kind}>
             <EventTypeBadge eventType={event.eventType} size={20} />
@@ -55,6 +62,7 @@ export function EventCard({ event, accessory, dimmed }: Props) {
           <Text style={styles.title} numberOfLines={2}>
             {event.title}
           </Text>
+          <HostLine event={event} size={16} />
           <Text style={styles.sub} numberOfLines={1}>
             {relativeDay(event.startTime, event.endTime)}
             {where ? ` · ${where}` : ""}
@@ -81,9 +89,9 @@ const styles = StyleSheet.create({
   pressed: { backgroundColor: "#F7F7F8" },
   accessory: { position: "absolute", top: 8, right: 8 },
   dimmed: { opacity: 0.6 },
-  tile: { width: 52, height: 56, borderRadius: radius.sm, backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center" },
-  month: { fontSize: 11, fontWeight: "600", letterSpacing: 0.3, color: colors.brand },
-  day: { fontSize: 22, fontWeight: "600", lineHeight: 24, color: colors.ink, marginTop: 1, ...type.numeric },
+  date: { position: "absolute", left: 4, bottom: 4, flexDirection: "row", alignItems: "baseline", gap: 3, paddingHorizontal: 5, paddingVertical: 1, borderRadius: radius.xs, backgroundColor: colors.surface, ...shadow.plate },
+  month: { fontSize: 10, fontWeight: "600", letterSpacing: 0.3, color: colors.brand },
+  day: { fontSize: 13, fontWeight: "600", lineHeight: 17, color: colors.ink, ...type.numeric },
   body: { flex: 1, minWidth: 0, gap: 4 },
   kind: { flexDirection: "row", alignItems: "center", gap: 6 },
   kindText: { ...type.tag, fontWeight: "500", color: colors.muted },

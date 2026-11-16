@@ -1,11 +1,13 @@
 import { useMutation, useQuery } from "convex/react";
+import { makeFunctionReference } from "convex/server";
 import { createEventInCalendarAsync } from "expo-calendar";
 import { router, useLocalSearchParams, type ErrorBoundaryProps } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { EventHero, HostLine, OrgAvatar, type HostCompany } from "@/components/event-media";
 import { EventTypeIcon } from "@/components/event-type-icon";
 import { EmptyState } from "@/components/feed/empty-state";
 import { EventPrep } from "@/components/event-prep";
@@ -19,10 +21,25 @@ import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { INTERESTS } from "@/convex/lib/interests";
 import { INVESTORS_LIKELY_MIN } from "@/convex/lib/ranking";
+import { convex } from "@/lib/convex";
 import { useDeviceId } from "@/lib/device";
 import { DEFAULT_DURATION, formatRange, longWhen, SOURCE_LABEL } from "@/lib/format";
 
 const LISTING_SOURCES = new Set(["luma", "devpost", "eventbrite", "meetup"]);
+
+const eventHost = makeFunctionReference<"query", { eventId: Id<"events"> }, HostCompany | null>("events:host");
+
+function useHostCompany(eventId: Id<"events">) {
+  const [host, setHost] = useState<HostCompany | undefined>();
+  useEffect(() => {
+    let live = true;
+    convex.query(eventHost, { eventId }).then((h) => live && setHost(h ?? undefined), () => undefined);
+    return () => {
+      live = false;
+    };
+  }, [eventId]);
+  return host;
+}
 
 const back = () => (router.canGoBack() ? router.back() : router.replace("/feed"));
 
@@ -62,6 +79,7 @@ export default function EventDetail() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast, show, hide } = useToast();
+  const hostCompany = useHostCompany(id);
 
   if (event === undefined) return <ActivityIndicator style={{ flex: 1, backgroundColor: colors.bg }} color={colors.brand} />;
   if (event === null) {
@@ -137,19 +155,22 @@ export default function EventDetail() {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
-        <View style={[styles.hero, { backgroundColor: tier === "high" ? colors.goldSoft : `${meta.color}14` }]}>
-          <View style={styles.heroBadge}>
-            <EventTypeIcon eventType={event.eventType} size={28} />
-          </View>
-          <View style={styles.src}>
-            <Text style={styles.srcText}>via {source}</Text>
-          </View>
+        <View style={styles.hero}>
+          <EventHero event={event}>
+            <View style={styles.heroBadge}>
+              <EventTypeIcon eventType={event.eventType} size={22} />
+            </View>
+            <View style={styles.src}>
+              <Text style={styles.srcText}>via {source}</Text>
+            </View>
+          </EventHero>
         </View>
 
         <Text testID="event-title" style={styles.title}>
           {event.title}
         </Text>
-        {event.organizer ? <Text style={styles.org}>{event.organizer}</Text> : <View style={{ height: 12 }} />}
+        <HostLine event={{ ...event, hostCompany }} size={24} textStyle={styles.org} style={styles.orgRow} />
+        {event.organizer || hostCompany ? null : <View style={{ height: 12 }} />}
 
         <View style={styles.facts}>
           <View style={styles.fact}>
@@ -175,6 +196,15 @@ export default function EventDetail() {
               <Text style={[styles.factSub, !event.isOnline && { color: colors.brandInk }]}>{placeSub}</Text>
             </View>
           </Pressable>
+          {hostCompany && hostCompany.name !== event.organizer ? (
+            <View testID="host-company" style={[styles.fact, styles.factBorder]}>
+              <OrgAvatar uri={hostCompany.logo} name={hostCompany.name} size={20} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.factMain}>Hosted by {hostCompany.name}</Text>
+                <Text style={styles.factSub}>Verified company</Text>
+              </View>
+            </View>
+          ) : null}
           {hosts.length ? (
             <View style={[styles.fact, styles.factBorder]}>
               <PeopleIcon color={colors.subtle} />
@@ -292,21 +322,13 @@ const styles = StyleSheet.create({
   iconBtn: { width: layout.tapTarget, height: layout.tapTarget, alignItems: "center", justifyContent: "center", borderRadius: radius.button },
   kind: { height: 24, paddingHorizontal: 8, borderRadius: radius.tag, backgroundColor: colors.secondary, flexDirection: "row", alignItems: "center", gap: 6 },
   kindText: { ...type.tag, fontWeight: "500", color: colors.muted },
-  heroBadge: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", ...shadow.plate },
-  hero: {
-    marginHorizontal: layout.screenPadding,
-    height: 120,
-    borderRadius: radius.lg,
-    backgroundColor: colors.brandSoft,
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    padding: 14,
-  },
-  src: { backgroundColor: colors.bg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.tag },
-  srcText: { fontSize: 12, fontWeight: "500", color: colors.muted },
+  heroBadge: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", ...shadow.plate },
+  hero: { marginHorizontal: layout.screenPadding },
+  src: { backgroundColor: "rgba(0,0,0,0.55)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.tag },
+  srcText: { fontSize: 12, fontWeight: "500", color: colors.white },
   title: { ...type.detailTitle, color: colors.ink, marginTop: 16, marginHorizontal: layout.screenPadding, marginBottom: 4 },
-  org: { fontSize: 14, color: colors.muted, marginHorizontal: layout.screenPadding, marginBottom: 16 },
+  org: { fontSize: 14, color: colors.muted },
+  orgRow: { marginHorizontal: layout.screenPadding, marginTop: 2, marginBottom: 16, gap: 8 },
   facts: { marginHorizontal: layout.screenPadding, borderRadius: radius.card, backgroundColor: colors.surface, overflow: "hidden", ...shadow.card },
   fact: { flexDirection: "row", gap: 12, paddingVertical: 12, paddingHorizontal: 14, alignItems: "flex-start" },
   factBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
