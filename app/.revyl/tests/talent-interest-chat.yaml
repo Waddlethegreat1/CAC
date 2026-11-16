@@ -1,3 +1,11 @@
+# Revyl Test Definition
+
+_meta:
+    remote_id: 7845a9a8-84ed-42a1-9bd5-5f2aa196ddb0
+    remote_version: 1
+    local_version: 1
+    last_synced_at: "2026-11-16T00:00:53Z"
+    checksum: 5da3734a71a3fba8be0046f9933525a849933e686215609987d0ec43597c10f6
 test:
     metadata:
         name: talent-interest-chat
@@ -8,10 +16,10 @@ test:
         name: Scout iOS
     blocks:
         - type: module_import
-          module: "onboard-student"
+          module: onboard-student
         - type: manual
           step_type: navigate
-          step_description: "cac-scout://dev/seed-talent-match"
+          step_description: cac-scout://dev/seed-talent-match
         - type: validation
           step_description: The ended event "[TEST] Scout fixture demo day" opens with no I'm going button. A Connect with the hosts section lists Scout Test Co with a Verified badge and an "Interested in Scout Test Co" button.
         - type: instructions

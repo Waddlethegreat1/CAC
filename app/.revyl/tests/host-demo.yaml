@@ -1,0 +1,39 @@
+test:
+    metadata:
+        name: host-demo
+        platform: ios
+        tags:
+            - host
+            - demo
+    build:
+        name: Scout iOS
+    blocks:
+        - type: manual
+          step_type: navigate
+          step_description: "cac-scout://dev/seed-host-demo"
+        - type: validation
+          step_description: After a short spinner, the Talent matches screen is shown for "[TEST] Northwind AI builders night". Priya Raman shows Mutual, Marcus Ellery shows Interested in you, and Daniel Okafor, Hana, Leo and Sofia have no connection yet. Each row shows a school and a prior role.
+        - type: instructions
+          step_description: Tap Daniel Okafor's name to open his profile.
+        - type: validation
+          step_description: Daniel Okafor's profile shows his experience.
+        - type: instructions
+          step_description: Tap Back. On Daniel Okafor's row tap Interested, type "Loved your payments demo. We're hiring a backend intern this summer, want to chat?" and tap Send interest.
+        - type: validation
+          step_description: Daniel Okafor's row shows Request sent.
+        - type: instructions
+          step_description: Tap Demo talent accepts on Daniel Okafor's row.
+        - type: validation
+          step_description: Daniel Okafor's row shows Mutual.
+        - type: instructions
+          step_description: Tap Open chat on Daniel Okafor's row.
+        - type: validation
+          step_description: The chat shows the original note as "You reached out after" followed by a reply from Daniel.
+        - type: instructions
+          step_description: Type "Great, does Thursday work?" and tap Send.
+        - type: validation
+          step_description: The message "Great, does Thursday work?" appears in the chat.
+        - type: instructions
+          step_description: Tap Back, then open the Inbox tab.
+        - type: validation
+          step_description: Under For Northwind Labs, Incoming lists Marcus Ellery with Accept and Decline, and Connected lists Priya Raman and Daniel Okafor.
