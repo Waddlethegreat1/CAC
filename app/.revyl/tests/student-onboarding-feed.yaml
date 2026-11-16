@@ -28,7 +28,7 @@ test:
         - type: instructions
           step_description: Tap Continue without choosing a role.
         - type: validation
-          step_description: An error reads "Choose Talent or Looking for Talent to continue".
+          step_description: An error reads "Choose Talent, Looking for Talent or I'm a host to continue".
         - type: instructions
           step_description: Tap "Talent", then tap Continue.
         - type: validation
