@@ -11,6 +11,7 @@ import { EventPrep } from "@/components/event-prep";
 import { AttendanceAggregate, GoingButton } from "@/components/attendance";
 import { EventConnections } from "@/components/connections/event-connections";
 import { Toast, useToast } from "@/components/feed/toast";
+import { FriendsGoing } from "@/components/friends-going";
 import { AlertIcon, BackIcon, BookmarkIcon, CalendarIcon, ChartIcon, CheckIcon, LinkIcon, PeopleIcon, PinIcon, ShareIcon, SparkIcon } from "@/components/icons";
 import { colors, EVENT_TYPE_META, INVESTOR_SOME_MIN, layout, radius, shadow, type } from "@/constants/theme";
 import { api } from "@/convex/_generated/api";
@@ -195,6 +196,7 @@ export default function EventDetail() {
         <EventPrep key={event._id} event={event} deviceId={deviceId} />
 
         <View style={{ marginHorizontal: layout.screenPadding, marginTop: 12 }}><GoingButton event={event} /></View>
+        <FriendsGoing eventId={event._id} />
         <EventConnections event={event} />
         <View testID="investor-signal" accessibilityLabel="Investor signal" style={[styles.signal, tier === "low" && styles.signalLow]}>
           <View style={styles.signalHead}>
