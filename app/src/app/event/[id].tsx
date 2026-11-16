@@ -8,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { EventTypeIcon } from "@/components/event-type-icon";
 import { EmptyState } from "@/components/feed/empty-state";
+import { EventPrep } from "@/components/event-prep";
 import { AttendanceAggregate, GoingButton } from "@/components/attendance";
 import { EventConnections } from "@/components/connections/event-connections";
 import { Toast, useToast } from "@/components/feed/toast";
@@ -194,6 +195,8 @@ export default function EventDetail() {
             <Text style={styles.btnText}>Share</Text>
           </Pressable>
         </View>
+
+        <EventPrep key={event._id} event={event} deviceId={deviceId} />
 
         <View style={{ marginHorizontal: layout.screenPadding, marginTop: 12 }}><GoingButton event={event} /></View>
         <EventConnections event={event} />
