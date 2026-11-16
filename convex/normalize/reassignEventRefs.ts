@@ -1,5 +1,6 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
+import { deletePrepReferences, rekeyPrepReferences } from "../prepReferences";
 
 const MAX_MERGE_RECORDS = 4000;
 
@@ -70,6 +71,7 @@ export async function reassignEventRefs(ctx: MutationCtx, fromId: Id<"events">, 
     else await ctx.db.patch(save._id, { eventId: toId });
   }
   await mergeAttendance(ctx, fromId, toId);
+  await rekeyPrepReferences(ctx, fromId, toId);
   await mergeConnectionRefs(ctx, fromId, toId);
 }
 
@@ -98,6 +100,7 @@ export async function deleteEventRefs(ctx: MutationCtx, eventId: Id<"events">) {
   const records = groups.flat();
   if (records.length + connections.length > MAX_MERGE_RECORDS) throw new Error("Event reference cleanup exceeds transaction limit");
   for (const record of records) await ctx.db.delete(record._id);
+  await deletePrepReferences(ctx, eventId);
   for (const connection of connections) await ctx.db.patch(connection._id, { eventId: undefined });
   return { saves: groups[0].length };
 }
