@@ -1,7 +1,7 @@
 import { useAuthActions, useConvexAuth } from "@convex-dev/auth/react";
 import { useMutation, useQuery } from "convex/react";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -30,7 +30,16 @@ const ROLES: { id: Role; icon: IconName; title: string; blurb: string }[] = [
 export default function Onboarding() {
   const deviceId = useDeviceId();
   const existing = useQuery(api.users.get, deviceId ? { deviceId } : "skip");
-  if (!deviceId || existing === undefined) return <ActivityIndicator style={{ flex: 1 }} color={colors.brand} />;
+  const { isAuthenticated } = useConvexAuth();
+  const { signOut } = useAuthActions();
+  const accountDeviceId = useQuery(api.users.accountDeviceId, isAuthenticated ? {} : "skip");
+  const orphanedSession = isAuthenticated && existing === null && (accountDeviceId === null || accountDeviceId === deviceId);
+
+  useEffect(() => {
+    if (orphanedSession) void signOut();
+  }, [orphanedSession, signOut]);
+
+  if (!deviceId || existing === undefined || orphanedSession) return <ActivityIndicator style={{ flex: 1 }} color={colors.brand} />;
   return <OnboardingForm deviceId={deviceId} existing={existing} />;
 }
 
