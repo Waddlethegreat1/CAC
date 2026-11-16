@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-nati
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "@/components/button";
+import { DEMO_FIXTURES, DemoTalentAccept } from "@/components/connections/demo-talent-accept";
 import { InterestSheet } from "@/components/connections/interest-sheet";
 import { Card, Notice, Pill, ScreenHeader, SectionTitle, styles } from "@/components/connections/ui";
 import { Icon } from "@/components/icon";
@@ -53,7 +54,7 @@ export default function TalentMatchesScreen() {
         <Pressable accessibilityRole="button" accessibilityLabel={`View ${name}'s profile`} onPress={() => router.push({ pathname: "/company/[id]/profile/[userId]", params: { id, userId: m.talent.userId } })} style={styles.inline}>
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={styles.title}>{name}</Text>
-            <Text style={styles.meta} numberOfLines={1}>{[m.talent.affiliation, m.attended ? "Went" : null].filter(Boolean).join(" · ") || "Talent"}</Text>
+            <Text style={styles.meta} numberOfLines={2}>{[m.talent.affiliation, m.attended ? "Went" : null].filter(Boolean).join(" · ") || "Talent"}</Text>
           </View>
           {pill ? <Pill label={pill.label} tone={pill.tone} /> : null}
           <Icon name="chevron-right" size={16} color={colors.subtle} />
@@ -63,6 +64,8 @@ export default function TalentMatchesScreen() {
           <Button testID={`match-chat-${i}`} label="Open chat" variant="outline" style={[styles.small, { alignSelf: "flex-start" }]} onPress={() => router.push({ pathname: "/chat/[id]", params: { id: m.connection!._id } })} />
         ) : m.connection?.status === "pending" && m.connection.initiatedBy === "talent" ? (
           <Button testID={`match-inbox-${i}`} label="Respond in Inbox" variant="outline" style={[styles.small, { alignSelf: "flex-start" }]} onPress={() => router.push("/inbox")} />
+        ) : DEMO_FIXTURES && m.connection?.status === "pending" ? (
+          <DemoTalentAccept testID={`match-demo-accept-${i}`} connectionId={m.connection._id} />
         ) : !m.connection && m.blockedUntil ? (
           <Text style={styles.meta}>Declined. You can reach out again after {shortDate(m.blockedUntil)}</Text>
         ) : !m.connection && ended ? (
@@ -77,7 +80,7 @@ export default function TalentMatchesScreen() {
       <ScreenHeader title="Talent matches" subtitle={data.event.title} fallback="/companies" />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={[styles.meta, { marginTop: space.md }]}>
-          Talent who marked Going before this event ended or checked in, plus anyone connected with you through it. Open a profile for their school, prior roles and experience. Contact details appear only if you connect and they choose to share them
+          Talent who went to this event or connected with you through it. Tap a name for their prior roles and experience. Contact details appear only once you connect and they choose to share them
         </Text>
         {!ended ? <Notice title="The event hasn't ended" body="You can reach out to talent once it ends" /> : null}
         {mutual.length ? (
