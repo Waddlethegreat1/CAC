@@ -39,7 +39,9 @@ export default function ChatScreen() {
   const asTalent = inbox.talent.connected.find((c) => c._id === id);
   const asCompany = inbox.companies.flatMap((c) => c.connected.map((conn) => ({ ...conn, company: c.company }))).find((c) => c._id === id);
   const title = asTalent ? asTalent.company.name : asCompany ? asCompany.talent.name ?? "Talent" : "Chat";
-  const event = (asTalent ?? asCompany)?.event;
+  const connection = asTalent ?? asCompany;
+  const event = connection?.event;
+  const requester = connection && (connection.initiatedBy === "talent" ? (asTalent ? "You" : title) : (asCompany ? "You" : title));
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -61,6 +63,12 @@ export default function ChatScreen() {
             ) : null}
             {asCompany?.contact ? <ContactCard contact={asCompany.contact} /> : null}
             {asCompany && !asCompany.contact ? <Text style={[styles.meta, { textAlign: "center" }]}>{title} hasn&apos;t shared contact details. Keep the conversation here</Text> : null}
+            {connection?.message ? (
+              <View testID="chat-request" style={{ alignItems: "center", gap: 2, marginVertical: space.sm }}>
+                <Text style={styles.meta}>{requester} reached out{event ? ` after ${event.title}` : ""}</Text>
+                <Text style={[styles.quote, { textAlign: "center" }]}>&ldquo;{connection.message}&rdquo;</Text>
+              </View>
+            ) : null}
             <Pages connectionId={id} depth={pages} onOlder={() => { stick.current = false; setPages((p) => p + 1); }} />
           </ScrollView>
           <Composer connectionId={id} />
