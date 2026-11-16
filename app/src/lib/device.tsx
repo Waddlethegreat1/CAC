@@ -1,6 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useConvexAuth } from "@convex-dev/auth/react";
 import { useMutation, useQuery } from "convex/react";
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import * as Crypto from "expo-crypto";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { api } from "@/convex/_generated/api";
 
@@ -17,24 +19,38 @@ export const DEFAULT_RADIUS_KM = 100;
 export const radiusLabel = (km: number) =>
   RADIUS_OPTIONS.find((o) => o.km === km)?.label ?? `${Math.round(km / 1.609)} mi`;
 
-const DeviceContext = createContext<string | null>(null);
+type Device = { deviceId: string | null; adopt: (id: string) => Promise<void>; reset: () => Promise<void> };
 
-const newId = () => `dev_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+const DeviceContext = createContext<Device>({ deviceId: null, adopt: async () => {}, reset: async () => {} });
+
+const newId = () => `dev_${Crypto.randomUUID()}`;
 
 export function DeviceProvider({ children }: { children: ReactNode }) {
   const [deviceId, setDeviceId] = useState<string | null>(null);
-  useEffect(() => {
-    AsyncStorage.getItem(KEY).then(async (stored) => {
-      if (stored) return setDeviceId(stored);
-      const id = newId();
-      await AsyncStorage.setItem(KEY, id);
-      setDeviceId(id);
-    });
+  const { isAuthenticated } = useConvexAuth();
+  const accountDeviceId = useQuery(api.users.accountDeviceId, isAuthenticated ? {} : "skip");
+
+  const adopt = useCallback(async (id: string) => {
+    await AsyncStorage.setItem(KEY, id);
+    setDeviceId(id);
   }, []);
-  return <DeviceContext.Provider value={deviceId}>{children}</DeviceContext.Provider>;
+  const reset = useCallback(() => adopt(newId()), [adopt]);
+
+  useEffect(() => {
+    AsyncStorage.getItem(KEY).then((stored) => (stored ? setDeviceId(stored) : reset()));
+  }, [reset]);
+
+  useEffect(() => {
+    if (!accountDeviceId || !deviceId || accountDeviceId === deviceId) return;
+    AsyncStorage.setItem(KEY, accountDeviceId).then(() => setDeviceId(accountDeviceId));
+  }, [accountDeviceId, deviceId]);
+
+  const value = useMemo(() => ({ deviceId, adopt, reset }), [deviceId, adopt, reset]);
+  return <DeviceContext.Provider value={value}>{children}</DeviceContext.Provider>;
 }
 
-export const useDeviceId = () => useContext(DeviceContext);
+export const useDeviceId = () => useContext(DeviceContext).deviceId;
+export const useDevice = () => useContext(DeviceContext);
 
 export function useSearchRadius() {
   const deviceId = useDeviceId();
@@ -46,7 +62,7 @@ export function useSearchRadius() {
     async (km: number) => {
       setDraft(km);
       if (!user) return;
-      const { _id, _creationTime, updatedAt, ...profile } = user;
+      const { _id, _creationTime, updatedAt, name, email, phone, affiliation, linkedin, ...profile } = user;
       await upsert({ ...profile, radiusKm: km });
     },
     [user, upsert],

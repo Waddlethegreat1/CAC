@@ -1,3 +1,4 @@
+import { useAuthActions, useConvexAuth } from "@convex-dev/auth/react";
 import { useMutation, useQuery } from "convex/react";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -6,13 +7,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button } from "@/components/button";
 import { AttendanceHistory } from "@/components/attendance";
+import { DetailsFields, affiliationLabel, contactErrorOf, contactOf } from "@/components/details-fields";
+import { checkProfessional, ProfessionalFields, professionalErrorOf, professionalOf, type Professional } from "@/components/professional-fields";
 import { Icon } from "@/components/icon";
 import { Segmented } from "@/components/segmented";
 import { SelectChip } from "@/components/select-chip";
 import { colors, layout, radius, shadow, space, type } from "@/constants/theme";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
-import { DEFAULT_RADIUS_KM, RADIUS_OPTIONS, useDeviceId } from "@/lib/device";
+import { checkContact, type Contact } from "@/convex/lib/contact";
+import { DEFAULT_RADIUS_KM, RADIUS_OPTIONS, useDevice, useDeviceId } from "@/lib/device";
 import { AREAS, cityPlace, locateDevice, type Place, type Role } from "@/lib/profile";
 
 type User = Doc<"users">;
@@ -45,6 +49,15 @@ function ProfileForm({ user }: { user: User }) {
   const upsert = useMutation(api.users.upsert);
   const [editingInterests, setEditingInterests] = useState(false);
   const [draft, setDraft] = useState<string[]>(user.interests);
+  const { isAuthenticated } = useConvexAuth();
+  const { signOut } = useAuthActions();
+  const { reset } = useDevice();
+  const [signingOut, setSigningOut] = useState(false);
+  const [editingDetails, setEditingDetails] = useState(false);
+  const [details, setDetails] = useState<Contact>(contactOf(user));
+  const [detailErrors, setDetailErrors] = useState<Partial<Contact>>({});
+  const [professional, setProfessional] = useState<Professional>(professionalOf(user));
+  const [professionalErrors, setProfessionalErrors] = useState<Partial<Professional>>({});
   const [areaOpen, setAreaOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +74,7 @@ function ProfileForm({ user }: { user: User }) {
     noticeTimer.current = setTimeout(() => setNotice(null), 2500);
   };
 
-  const save = async (patch: Partial<{ role: Role; interests: string[]; radiusKm: number } & Place>, done: string) => {
+  const save = async (patch: Partial<{ role: Role; interests: string[]; radiusKm: number } & Place & Contact & Professional>, done: string) => {
     setError(null);
     try {
       await upsert({
@@ -76,8 +89,12 @@ function ProfileForm({ user }: { user: User }) {
       });
       flash(done);
       return true;
-    } catch {
-      setError("Couldn't save: no connection. Try again");
+    } catch (e) {
+      const proError = professionalErrorOf(e);
+      const fieldError = proError ? null : contactErrorOf(e);
+      if (proError) setProfessionalErrors(proError);
+      if (fieldError) setDetailErrors(fieldError);
+      setError(fieldError || proError ? "Check the highlighted details" : "Couldn't save: no connection. Try again");
       return false;
     }
   };
@@ -87,6 +104,38 @@ function ProfileForm({ user }: { user: User }) {
   const saveInterests = async () => {
     if (draft.length === 0) return setError("Pick at least one interest");
     if (await save({ interests: draft }, "Interests saved")) setEditingInterests(false);
+  };
+
+  const saveDetails = async () => {
+    const checked = checkContact(details);
+    const pro = user.role === "student" ? checkProfessional(professional) : null;
+    if ("errors" in checked || (pro && "errors" in pro)) {
+      if ("errors" in checked) setDetailErrors(checked.errors);
+      if (pro && "errors" in pro) setProfessionalErrors(pro.errors);
+      return setError("Check the highlighted details");
+    }
+    if (await save({ ...checked.values, ...(pro && "values" in pro ? pro.values : {}) }, "Details saved")) setEditingDetails(false);
+  };
+
+  const detailRows = [
+    { label: "Name", value: user.name },
+    { label: "Email", value: user.email },
+    { label: "Phone", value: user.phone },
+    { label: affiliationLabel(user.role), value: user.affiliation },
+    { label: "LinkedIn", value: user.linkedin?.replace(/^https:\/\/www\./, "") },
+    ...(user.role === "student" ? [{ label: "Prior roles", value: user.priorRoles }, { label: "Experience", value: user.experience }] : []),
+  ];
+
+  const signOutHere = async () => {
+    setSigningOut(true);
+    try {
+      await signOut();
+      await reset();
+      router.replace("/onboarding");
+    } catch {
+      setError("Couldn't sign out: no connection. Try again");
+      setSigningOut(false);
+    }
   };
 
   const useMyLocation = async () => {
@@ -108,14 +157,88 @@ function ProfileForm({ user }: { user: User }) {
       <Segmented
         accessibilityLabel="Role"
         options={[
-          { value: "student" as Role, label: "Student", testID: "profile-role-student" },
-          { value: "investor" as Role, label: "Investor", testID: "profile-role-investor" },
+          { value: "student" as Role, label: "Talent", testID: "profile-role-student" },
+          { value: "investor" as Role, label: "Looking for Talent", testID: "profile-role-investor" },
+          { value: "host" as Role, label: "Host", testID: "profile-role-host" },
         ]}
         value={user.role}
         onChange={(role) => {
-          if (role !== user.role) void save({ role }, role === "investor" ? "Investor mode on. Your feed now scouts student events" : "Student mode on");
+          if (role !== user.role)
+            void save({ role }, role === "investor" ? "Looking for Talent on. Your feed now scouts student events" : role === "host" ? "Host mode on. Verify a work email from Inbox to use company features" : "Talent mode on");
         }}
       />
+
+      <Text style={styles.group}>Your details</Text>
+      {editingDetails ? (
+        <>
+          <DetailsFields
+            role={user.role}
+            value={details}
+            errors={detailErrors}
+            testIDPrefix="profile-details"
+            onChange={(field, text) => {
+              setError(null);
+              setDetails((cur) => ({ ...cur, [field]: text }));
+              setDetailErrors((cur) => ({ ...cur, [field]: undefined }));
+            }}
+          />
+          {user.role === "student" ? (
+            <ProfessionalFields
+              value={professional}
+              errors={professionalErrors}
+              testIDPrefix="profile-details"
+              onChange={(field, text) => {
+                setError(null);
+                setProfessional((cur) => ({ ...cur, [field]: text }));
+                setProfessionalErrors((cur) => ({ ...cur, [field]: undefined }));
+              }}
+            />
+          ) : null}
+          <View style={styles.row}>
+            <Button
+              variant="ghost"
+              label="Cancel"
+              style={{ flex: 1 }}
+              onPress={() => {
+                setDetails(contactOf(user));
+                setDetailErrors({});
+                setProfessional(professionalOf(user));
+                setProfessionalErrors({});
+                setEditingDetails(false);
+                setError(null);
+              }}
+            />
+            <Button testID="save-details" label="Save details" style={{ flex: 2 }} onPress={saveDetails} />
+          </View>
+        </>
+      ) : (
+        <>
+          <View style={styles.card} testID="profile-details">
+            {detailRows.map((r, i) => (
+              <View key={r.label} style={[styles.prow, i > 0 && styles.divider]}>
+                <Text style={styles.body}>{r.label}</Text>
+                <Text style={[styles.value, styles.detailValue, !r.value && styles.empty]} numberOfLines={1}>
+                  {r.value || "Not added"}
+                </Text>
+              </View>
+            ))}
+          </View>
+          <Text style={styles.privacy}>Only you can see your email, phone, and LinkedIn, unless you choose to share them with a company you&apos;ve connected with</Text>
+          <Button
+            testID="edit-details"
+            variant="outline"
+            label={user.name ? "Edit details" : "Add your details"}
+            style={{ marginTop: space.md }}
+            onPress={() => {
+              setDetails(contactOf(user));
+              setDetailErrors({});
+              setProfessional(professionalOf(user));
+              setProfessionalErrors({});
+              setEditingDetails(true);
+            }}
+          />
+        </>
+      )}
 
       <Text style={styles.group}>Interests</Text>
       {editingInterests ? (
@@ -235,6 +358,21 @@ function ProfileForm({ user }: { user: User }) {
         </View>
       ) : null}
 
+      <Text style={styles.group}>Account</Text>
+      <View style={[styles.card, styles.accountCard]} testID="profile-account">
+        <Text style={styles.body}>{isAuthenticated ? `Signed in as ${user.email ?? "your account"}` : "No account on this device"}</Text>
+        <Text style={styles.accountHint}>
+          {isAuthenticated
+            ? "Signing out removes your profile from this device. Sign back in with your email and password to restore it"
+            : "Start onboarding over to set a password, or sign in to an account you already have"}
+        </Text>
+        {isAuthenticated ? (
+          <Button testID="sign-out" variant="outline" label="Sign out" loading={signingOut} onPress={signOutHere} />
+        ) : (
+          <Button testID="profile-sign-in" variant="outline" label="Sign in to an existing account" onPress={() => router.push("/sign-in")} />
+        )}
+      </View>
+
       <Button testID="restart-onboarding" variant="ghost" label="Start onboarding over" onPress={() => router.push("/onboarding")} />
     </ScrollView>
   );
@@ -256,6 +394,11 @@ const styles = StyleSheet.create({
   areaPicker: { paddingHorizontal: layout.cardPadding, paddingBottom: layout.cardPadding, gap: space.md },
   body: { ...type.body, color: colors.ink, flex: 1 },
   value: { ...type.body, color: colors.muted, paddingVertical: space.md },
+  detailValue: { flexShrink: 1, maxWidth: "65%", textAlign: "right" },
+  empty: { color: colors.subtle },
+  privacy: { ...type.meta, color: colors.subtle, marginTop: space.sm },
+  accountCard: { padding: layout.cardPadding, gap: space.sm, marginBottom: space.md },
+  accountHint: { ...type.meta, color: colors.muted },
   error: { ...type.meta, color: colors.danger, minHeight: 18, marginTop: space.md },
   notice: { flexDirection: "row", alignItems: "center", gap: space.sm, marginBottom: space.sm },
   noticeText: { ...type.meta, color: colors.ink },

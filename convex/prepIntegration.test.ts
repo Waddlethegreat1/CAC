@@ -22,7 +22,7 @@ async function setup() {
   for (const eventId of [keep, drop]) {
     await t.action(api.prep.generateBriefing, { deviceId: "prep-integration", eventId });
     await t.action(api.prep.generateFollowup, { deviceId: "prep-integration", eventId, recipient: eventId === keep ? "Canonical contact" : "Other contact" });
-    await t.mutation(api.attendance.setGoing, { deviceId: "prep-integration", eventId, going: true });
+    await t.run((ctx) => ctx.db.insert("attendance", { userId, eventId, going: true }));
     await t.mutation(api.saves.toggle, { deviceId: "prep-integration", eventId });
   }
   return { t, userId, keep, drop };

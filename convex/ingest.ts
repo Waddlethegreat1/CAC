@@ -1,18 +1,20 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { resolveAdapter } from "./adapters";
 import { selectDueFeeds } from "./feeds";
 import { RobotsDisallowedError, makeHttp } from "./lib/http";
 import { rawEvent } from "./lib/rawEvent";
-import { ensureDefaults, upsertEvent, upsertRawListing } from "./lib/store";
+import { ensureDefaults, markListingsGone, upsertEvent, upsertRawListing } from "./lib/store";
 import { normalize } from "./normalize";
 import { embedderFromEnv } from "./normalize/embed";
+import { enrichTarget, isEnrichable, needsPlace, readPage, type EnrichTarget } from "./normalize/enrich";
 import { nominatimGeocoder } from "./normalize/geocode";
 import { normalizedEvent } from "./schema";
 
 const BATCH = 50;
+const SWEEP_BATCH = 50;
 const MINUTE = 60_000;
 const fetchStatus = v.union(v.literal("ok"), v.literal("error"), v.literal("skipped_robots"));
 
@@ -35,13 +37,37 @@ export const store = internalMutation({
     feedId: v.id("feeds"),
     items: v.array(v.object({ raw: rawEvent, event: v.union(normalizedEvent, v.null()) })),
   },
-  returns: v.null(),
+  returns: v.array(enrichTarget),
   handler: async (ctx, { feedId, items }) => {
+    const dropped: Id<"raw_listings">[] = [];
+    const enrich: EnrichTarget[] = [];
     for (const { raw, event } of items) {
       const rawListingId = await upsertRawListing(ctx, raw, feedId);
-      if (event) await upsertEvent(ctx, event, rawListingId);
+      let kept = event;
+      if (kept && needsPlace(kept) && isEnrichable(kept.url)) {
+        const page = await readPage(ctx, kept.url);
+        if (!page) enrich.push({ url: kept.url, source: kept.source, sourceId: kept.sourceId });
+        else if (page.outsideBayArea) kept = null;
+        else if (page.place) kept = { ...kept, ...page.place };
+      }
+      if (kept) await upsertEvent(ctx, kept, rawListingId);
+      else dropped.push(rawListingId);
     }
-    return null;
+    await markListingsGone(ctx, dropped);
+    return enrich;
+  },
+});
+
+export const sweep = internalMutation({
+  args: { feedId: v.id("feeds"), startedAt: v.number() },
+  returns: v.object({ swept: v.number(), hidden: v.number() }),
+  handler: async (ctx, { feedId, startedAt }) => {
+    const stale = await ctx.db
+      .query("raw_listings")
+      .withIndex("by_feed_missing_fetchedAt", (q) => q.eq("feedId", feedId).eq("missingSince", undefined).lt("fetchedAt", startedAt))
+      .take(SWEEP_BATCH);
+    const hidden = await markListingsGone(ctx, stale.map((l) => l._id));
+    return { swept: stale.length, hidden };
   },
 });
 
@@ -87,9 +113,14 @@ export const runFeed = internalAction({
       const geocode = nominatimGeocoder(ctx);
       const items = await Promise.all(raws.map(async (raw) => ({ raw, event: await normalize(raw, { geocode }) })));
       await embedderFromEnv()?.embed(items.flatMap((i) => (i.event ? [i.event] : [])));
+      const enrich: EnrichTarget[] = [];
       for (let i = 0; i < items.length; i += BATCH) {
-        await ctx.runMutation(internal.ingest.store, { feedId, items: items.slice(i, i + BATCH) });
+        enrich.push(...(await ctx.runMutation(internal.ingest.store, { feedId, items: items.slice(i, i + BATCH) })));
       }
+      let swept: number;
+      do swept = (await ctx.runMutation(internal.ingest.sweep, { feedId, startedAt })).swept;
+      while (swept === SWEEP_BATCH);
+      if (enrich.length > 0) await ctx.scheduler.runAfter(0, internal.normalize.enrich.run, { targets: enrich });
       const kept = items.filter((i) => i.event).length;
       await ctx.runMutation(internal.ingest.logFetch, { feedId, startedAt, status: "ok", rawCount: raws.length, insertedCount: kept });
       return { fetched: raws.length, kept };

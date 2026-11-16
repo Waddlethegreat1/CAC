@@ -17,6 +17,8 @@ export default function TabsLayout() {
   const deviceId = useDeviceId();
   const profile = useQuery(api.users.get, deviceId ? { deviceId } : "skip");
   const investor = profile?.role === "investor";
+  const inbox = useQuery(api.connections.inbox, deviceId ? { deviceId } : "skip");
+  const incoming = inbox ? inbox.talent.incoming.length + inbox.companies.reduce((n, c) => n + c.incoming.length, 0) : 0;
 
   return (
     <Tabs
@@ -30,6 +32,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="feed" options={{ title: "Feed", tabBarButtonTestID: "tab-feed", tabBarIcon: tabIcon("home") }} />
+      <Tabs.Screen name="map" options={{ title: "Map", tabBarButtonTestID: "tab-map", tabBarIcon: tabIcon("map-pin") }} />
       <Tabs.Screen name="saved" options={{ title: "Saved", tabBarButtonTestID: "tab-saved", tabBarIcon: tabIcon("bookmark") }} />
       <Tabs.Screen
         name="investor/index"
@@ -41,6 +44,7 @@ export default function TabsLayout() {
           tabBarIcon: tabIcon("trending-up"),
         }}
       />
+      <Tabs.Screen name="inbox" options={{ title: "Inbox", tabBarButtonTestID: "tab-inbox", tabBarIcon: tabIcon("briefcase"), tabBarBadge: incoming || undefined }} />
       <Tabs.Screen name="profile" options={{ title: "Profile", tabBarButtonTestID: "tab-profile", tabBarIcon: tabIcon("user") }} />
     </Tabs>
   );

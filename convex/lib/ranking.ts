@@ -3,7 +3,7 @@ import { distanceKm } from "./geo";
 
 export type RankInput = {
   interests: string[];
-  role: "student" | "investor";
+  role: "student" | "investor" | "host";
   lat: number;
   lng: number;
   now: number;

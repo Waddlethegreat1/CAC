@@ -8,6 +8,7 @@ import { SelectChip } from "@/components/select-chip";
 import { colors, radius, shadow, type } from "@/constants/theme";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { errorCode, errorCopy } from "@/lib/connections";
 import { useDeviceId } from "@/lib/device";
 import { isPast, relativeDay } from "@/lib/format";
 
@@ -26,7 +27,7 @@ export function GoingButton({ event }: { event: { _id: Id<"events">; startTime: 
   const mine = useQuery(api.attendance.mine, deviceId ? { deviceId } : "skip");
   const setGoing = useMutation(api.attendance.setGoing);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const now = useAttendanceNow();
   const going = mine?.some((a) => a.eventId === event._id && a.going) ?? false;
   if (isPast(event.startTime, event.endTime, now)) return null;
@@ -40,9 +41,9 @@ export function GoingButton({ event }: { event: { _id: Id<"events">; startTime: 
         disabled={busy || !mine}
         onPress={async () => {
           if (!deviceId || busy) return;
-          setBusy(true); setError(false);
+          setBusy(true); setError(null);
           try { await setGoing({ deviceId, eventId: event._id, going: !going }); }
-          catch { setError(true); }
+          catch (e) { setError(errorCode(e) === "event_ended" ? errorCopy(e) : "Couldn't update going. Check your connection and try again"); }
           finally { setBusy(false); }
         }}
         style={[styles.going, going && styles.selected]}
@@ -50,7 +51,7 @@ export function GoingButton({ event }: { event: { _id: Id<"events">; startTime: 
         <Text style={styles.goingLabel}>{busy ? "Updating…" : going ? "✓ Going" : "I'm going"}</Text>
         <Text style={styles.meta}>{going ? "Tap to cancel" : "More than a save"}</Text>
       </Pressable>
-      {error ? <Text accessibilityRole="alert" style={styles.error}>Couldn&apos;t update going. Check your connection and try again</Text> : null}
+      {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
     </View>
   );
 }

@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { internal } from "./_generated/api";
 import schema from "./schema";
+import { DOMAIN_SHARDS, phaseAligned, reserve } from "./lib/http";
 import { isAllowed } from "./lib/robots";
 import { resolveAdapter } from "./adapters";
 import { icalAdapter } from "./adapters/ical";
@@ -179,21 +180,48 @@ describe("robots.txt", () => {
 });
 
 describe("per-domain rate limiter", () => {
-  test("reserves one slot per second per domain, independent across domains", async () => {
+  test("shards one domain into phase-aligned slots that stay at least 1s apart", async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-11-15T12:00:00Z"));
+    vi.setSystemTime(new Date("2026-11-15T12:00:00.250Z"));
     const t = convexTest(schema, modules);
     const now = Date.now();
-    const slots = [];
-    for (let i = 0; i < 3; i++) slots.push(await t.mutation(internal.lib.http.reserveSlot, { domain: "a.test" }));
-    expect(slots[1] - slots[0]).toBe(1000);
-    expect(slots[2] - slots[1]).toBe(1000);
-    expect(slots[0] - now).toBeLessThan(5);
-    const other = await t.mutation(internal.lib.http.reserveSlot, { domain: "b.test" });
-    expect(other - now).toBeLessThan(5);
-    vi.setSystemTime(now + 10_000);
-    const later = await t.mutation(internal.lib.http.reserveSlot, { domain: "a.test" });
-    expect(later - (now + 10_000)).toBeLessThan(5);
+    const slots: number[] = [];
+    for (let round = 0; round < 3; round++) {
+      for (let shard = 0; shard < DOMAIN_SHARDS; shard++) {
+        slots.push(await t.mutation(internal.lib.http.reserveSlot, { domain: "a.test", shard }));
+      }
+    }
+    const sorted = [...slots].sort((a, b) => a - b);
+    for (let i = 1; i < sorted.length; i++) expect(sorted[i] - sorted[i - 1]).toBeGreaterThanOrEqual(1000);
+    expect(sorted[0] - now).toBeLessThan(1000);
+    for (const at of slots.slice(0, DOMAIN_SHARDS)) expect(at - now).toBeLessThan(DOMAIN_SHARDS * 1000);
+    for (const shard of [0, 1, 2, 3]) expect(phaseAligned(now, shard) % (DOMAIN_SHARDS * 1000)).toBe(shard * 1000);
+
+    await t.mutation(internal.lib.http.reserveSlot, { domain: "b.test", shard: 0 });
+    const rows = await t.run((ctx) => ctx.db.query("domain_rate").collect());
+    expect(rows.map((r) => r.domain).sort()).toEqual(["a.test#0", "a.test#1", "a.test#2", "a.test#3", "b.test#0"]);
+
+    vi.setSystemTime(now + 60_000);
+    const later = await t.mutation(internal.lib.http.reserveSlot, { domain: "a.test", shard: 2 });
+    expect(later - (now + 60_000)).toBeLessThan(DOMAIN_SHARDS * 1000);
+  });
+
+  test("retries a write conflict on another shard and rethrows other errors", async () => {
+    const shards: number[] = [];
+    let calls = 0;
+    const ctx = {
+      runMutation: async (_ref: unknown, args: { shard: number }) => {
+        shards.push(args.shard);
+        if (++calls < 3) throw new Error('Documents read from or written to the "domain_rate" table changed while this mutation was being run and on every subsequent retry.');
+        return 42;
+      },
+    } as unknown as Parameters<typeof reserve>[0];
+    expect(await reserve(ctx, "conflict.test")).toBe(42);
+    expect(shards).toHaveLength(3);
+    expect(new Set(shards).size).toBe(3);
+
+    const failing = { runMutation: async () => Promise.reject(new Error("boom")) } as unknown as Parameters<typeof reserve>[0];
+    await expect(reserve(failing, "other.test")).rejects.toThrow("boom");
   });
 
   test("requests to one domain from separate runs are spaced at least 1s apart", async () => {

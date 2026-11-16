@@ -1,5 +1,11 @@
 # Revyl Test Definition
 
+_meta:
+    remote_id: b82483f0-91b5-4a12-925c-dc481b6112f2
+    remote_version: 2
+    local_version: 2
+    last_synced_at: "2026-11-15T21:55:39Z"
+    checksum: 2cdc976ecaac60d85a280863a6a15e0151c1cbb196fb2dbad91f1a3b416ff674
 test:
     metadata:
         name: paste-a-link
@@ -9,14 +15,8 @@ test:
     build:
         name: Scout iOS
     blocks:
-        - type: validation
-          step_description: The onboarding screen says "Find the rooms where startups happen" and shows an "I'm a student" option.
-        - type: instructions
-          step_description: Tap the Student option, then tap the Continue button at the bottom of the screen.
-        - type: instructions
-          step_description: Tap the Continue button again to keep the preselected interests.
-        - type: instructions
-          step_description: Tap the "San Francisco" city chip, then tap the "Show my events" button.
+        - type: module_import
+          module: onboard-student
         - type: validation
           step_description: The feed shows a "For you" heading, a location pill, and a round plus button at the top right.
         - type: instructions

@@ -2,6 +2,10 @@
 
 Event detail offers a cached, listing-grounded briefing before an event and editable-recipient follow-up drafts after its end time (or the feed's default three-hour duration). Drafts are never sent. Copy uses Expo Clipboard. Anonymous device IDs follow the app's existing trust model; they are not authenticated accounts.
 
+Prep only uses public event fields and the recipient the user types. It does not copy profile names, email addresses, phone numbers, LinkedIn URLs, affiliations, work-email verification fields, or connection contacts into cards or model requests. Signing in adopts the account's existing device profile through the app's bridge; prep does not introduce a separate identity mechanism.
+
+The shared event-reference transaction hook rekeys follow-ups when dedupe replaces an event and deletes prep rows during fixture purge. Dedupe drops both briefing caches and rebuilds follow-up text from the merged survivor and retained recipient, preferring the survivor's existing draft on user/event collisions. No orphan references or stale merged-listing drafts are retained.
+
 ## Demo
 
 After deploying these modules and seeding events, run:

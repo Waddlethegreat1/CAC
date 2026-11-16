@@ -60,6 +60,26 @@ afterEach(() => {
 });
 
 describe("prep cards", () => {
+  test("profile and account contact fields never enter cards or model requests", async () => {
+    const { t, args } = await setup();
+    const privateFields = {
+      name: "Private Profile Name", email: "private.profile@example.com", phone: "+1 415 555 0188",
+      linkedin: "linkedin.com/in/private-profile", affiliation: "Private Profile Company",
+      workEmail: "private.work@example.com", workDomain: "private-work.example.com",
+    };
+    await t.run(async (ctx) => {
+      const user = await ctx.db.query("users").withIndex("by_device", (q) => q.eq("deviceId", args.deviceId)).unique();
+      await ctx.db.patch(user!._id, privateFields);
+    });
+    vi.stubEnv("PREP_API_KEY", "test-key");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ choices: [{ message: { content: '{"questions":[0,1]}' } }] }))));
+    const card = await t.action(briefing, args);
+    const draft = await t.action(followup, { ...args, recipient: "Listed Host" });
+    const read = await t.query(get, args);
+    const visible = JSON.stringify([card, draft, read, vi.mocked(fetch).mock.calls]);
+    for (const value of Object.values(privateFields)) expect(visible).not.toContain(value);
+  });
+
   test("works without a key and uses only verbatim people excerpts and hosts", async () => {
     const { t, args } = await setup();
     expect(await t.query(get, args)).toEqual({ briefing: null, followup: null });
