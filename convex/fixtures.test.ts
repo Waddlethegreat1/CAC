@@ -515,3 +515,56 @@ describe("fixtures.seedHostDemo", () => {
     expect(invites).toEqual([]);
   });
 });
+
+describe("fixtures.seedFriendsDemo", () => {
+  const deviceId = "demo-friends-device";
+  beforeEach(() => vi.useFakeTimers({ toFake: ["Date"] }));
+  afterEach(() => vi.useRealTimers());
+
+  test("refuses to run unless ENABLE_TEST_FIXTURES is 1, or for a fixture device", async () => {
+    const t = convexTest(schema, modules);
+    for (const value of [undefined, "0", "true"]) {
+      vi.stubEnv("ENABLE_TEST_FIXTURES", value);
+      await expect(t.mutation(api.fixtures.seedFriendsDemo, { deviceId })).rejects.toThrow(/ENABLE_TEST_FIXTURES/);
+    }
+    vi.stubEnv("ENABLE_TEST_FIXTURES", "1");
+    await expect(t.mutation(api.fixtures.seedFriendsDemo, { deviceId: "fixture-scout-demo-talent-1" })).rejects.toThrow(/fixture device/);
+    expect(await t.run((ctx) => ctx.db.query("friendships").collect())).toEqual([]);
+  });
+
+  test("gives the caller two friends, one incoming request, and a friend going to an upcoming event, idempotently", async () => {
+    const t = convexTest(schema, modules);
+    await t.mutation(api.users.upsert, { ...sfStudent, deviceId });
+    const seeded = await t.mutation(api.fixtures.seedFriendsDemo, { deviceId });
+    const list = await t.query(api.friends.list, { deviceId });
+    expect(list.friends.map((f) => f.userId).sort()).toEqual([...seeded.friendUserIds].sort());
+    expect(list.friends.map((f) => f.name).sort()).toEqual(["Marcus Ellery", "Priya Raman"]);
+    expect(list.incoming).toMatchObject([{ requestId: seeded.incomingRequestId, name: "Sofia Navarro", affiliation: "UCSF, Bioengineering" }]);
+    expect(list.outgoing).toEqual([]);
+    const event = await t.run((ctx) => ctx.db.get(seeded.goingEventId));
+    expect(event).toMatchObject({ synthetic: true, source: "cac-fixtures" });
+    expect(event!.startTime).toBeGreaterThan(Date.now());
+    expect(await t.query(api.friends.goingTo, { deviceId, eventId: seeded.goingEventId })).toEqual([{ userId: seeded.friendUserIds[0], name: "Priya Raman" }]);
+    vi.setSystemTime(Date.now() + 1000);
+    expect(await t.mutation(api.fixtures.seedFriendsDemo, { deviceId })).toEqual(seeded);
+    expect(await t.run((ctx) => ctx.db.query("friendships").collect())).toHaveLength(3);
+    await t.mutation(api.friends.respond, { deviceId, requestId: seeded.incomingRequestId, accept: true });
+    expect((await t.query(api.friends.list, { deviceId })).friends).toHaveLength(3);
+  });
+
+  test("purgeSynthetic removes the friendships, demo talent, and event but keeps the caller", async () => {
+    const t = convexTest(schema, modules);
+    await t.mutation(api.users.upsert, { ...sfStudent, deviceId });
+    await t.mutation(api.fixtures.seedFriendsDemo, { deviceId });
+    expect(await t.mutation(internal.fixtures.purgeSynthetic, {})).toMatchObject({ events: 1, more: false });
+    const tables = await t.run(async (ctx) => ({
+      friendships: await ctx.db.query("friendships").collect(),
+      users: (await ctx.db.query("users").collect()).map((u) => u.deviceId),
+      events: await ctx.db.query("events").collect(),
+      attendance: await ctx.db.query("attendance").collect(),
+    }));
+    expect(tables).toEqual({ friendships: [], users: [deviceId], events: [], attendance: [] });
+    expect(await t.query(api.friends.list, { deviceId })).toEqual({ friends: [], incoming: [], outgoing: [] });
+  });
+});
+
