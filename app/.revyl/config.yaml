@@ -67,7 +67,7 @@ pr_review:
     workflows:
         enabled: true
         workflow_ids:
-            - "7009b0a0-a8c4-4d1d-a707-7903b444a5d9"
+            - "12886020-b777-4dcf-bcce-c19ae75154f1"
     strict_ci_check:
         build: true
 run_test_definitions_from_git: true
