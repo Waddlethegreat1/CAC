@@ -129,14 +129,14 @@ describe("attendance", () => {
     const { t, args } = await setup();
     await beforeEnd(() => t.mutation(api.attendance.setGoing, { ...args, going: true }));
     const response = { ...args, attended: true, rating: 4, investors: "yes" as const };
-    for (const rating of [0, 6, 1.5, NaN, Infinity, -Infinity]) await expect(t.mutation(api.attendance.respond, { ...response, rating })).rejects.toThrow("integer from 1 to 5");
+    for (const rating of [0, 11, 1.5, NaN, Infinity, -Infinity]) await expect(t.mutation(api.attendance.respond, { ...response, rating })).rejects.toThrow("integer from 1 to 10");
     await expect(t.mutation(api.attendance.respond, { ...args, attended: true, rating: 4 })).rejects.toThrow("requires");
     await expect(t.mutation(api.attendance.respond, { ...args, attended: true, investors: "no" })).rejects.toThrow("requires");
     await expect(t.mutation(api.attendance.respond, { ...response, attended: false })).rejects.toThrow("Only attendees");
     for (const note of ["x".repeat(241), "two\nlines", "two\rlines", "two\u2028lines", "two\u2029lines", "two\u0085lines"]) await expect(t.mutation(api.attendance.respond, { ...response, note })).rejects.toThrow("one line");
     await expect(t.mutation(api.attendance.respond, { ...response, investors: "maybe" as "yes" })).rejects.toThrow();
     await t.mutation(api.attendance.respond, { ...response, rating: 1, note: "😀".repeat(240) });
-    await t.mutation(api.attendance.respond, { ...response, rating: 5, note: "" });
+    await t.mutation(api.attendance.respond, { ...response, rating: 10, note: "" });
     expect(await t.query(api.attendance.pending, { deviceId: "alice", now: NOW })).toEqual([]);
     expect(await t.query(api.attendance.history, { deviceId: "bob" })).toEqual([]);
   });
@@ -172,9 +172,9 @@ describe("attendance", () => {
       await t.mutation(api.attendance.respond, response);
       if (i < 2) expect(await t.query(api.attendance.aggregate, { eventId })).toBeNull();
     }
-    expect(await t.query(api.attendance.aggregate, { eventId })).toEqual({ ratingCount: 3, averageWorthIt: 4, investorConfirmations: 1 });
-    await t.mutation(api.attendance.respond, { ...args, attended: true, rating: 5, investors: "no" });
-    expect(await t.query(api.attendance.aggregate, { eventId })).toEqual({ ratingCount: 3, averageWorthIt: 14 / 3, investorConfirmations: 0 });
+    expect(await t.query(api.attendance.aggregate, { eventId })).toEqual({ ratingCount: 3, averageWorthIt: 4, investorConfirmations: 1, ratingScale: 10 });
+    await t.mutation(api.attendance.respond, { ...args, attended: true, rating: 9, investors: "no" });
+    expect(await t.query(api.attendance.aggregate, { eventId })).toEqual({ ratingCount: 3, averageWorthIt: 6, investorConfirmations: 0, ratingScale: 10 });
     await t.mutation(api.attendance.respond, { ...args, attended: false });
     expect(await t.query(api.attendance.aggregate, { eventId })).toBeNull();
   });
@@ -198,6 +198,42 @@ describe("attendance", () => {
     expect(await t.query(internal.attendance.goingForUser, { userId: (await t.query(api.users.get, { deviceId: "alice" }))!._id })).toEqual([]);
   });
 
+  test("migrateRatingsTo10 doubles legacy ratings and sums exactly once, and legacy rows read on the 10 scale before it runs", async () => {
+    const { t, alice, bob, eventId } = await setup();
+    await t.run(async (ctx) => {
+      await ctx.db.insert("attendance", { userId: alice, eventId, going: true, attended: true, rating: 4, investors: "yes" });
+      await ctx.db.insert("attendance", { userId: bob, eventId, going: true, attended: true, rating: 2, investors: "no" });
+      await ctx.db.insert("attendance", { userId: alice, eventId: await ctx.db.insert("events", eventArgs("other")), going: true });
+      await ctx.db.insert("attendance_totals", { eventId, ratingCount: 3, ratingSum: 9, investorConfirmations: 1 });
+    });
+    expect(await t.query(api.attendance.aggregate, { eventId })).toEqual({ ratingCount: 3, averageWorthIt: 6, investorConfirmations: 1, ratingScale: 10 });
+    expect((await t.query(api.attendance.history, { deviceId: "alice" }))[0].rating).toBe(8);
+    expect(await t.mutation(internal.attendance.migrateRatingsTo10, {})).toEqual({ attendance: 3, totals: 1, more: false });
+    const once = await t.run(async (ctx) => ({ records: await ctx.db.query("attendance").collect(), totals: await ctx.db.query("attendance_totals").collect() }));
+    expect(once.records.map((r) => r.rating)).toEqual([8, 4, undefined]);
+    expect(once.totals[0]).toMatchObject({ ratingSum: 18, ratingScale: 10 });
+    expect(await t.mutation(internal.attendance.migrateRatingsTo10, {})).toEqual({ attendance: 0, totals: 0, more: false });
+    expect(await t.run(async (ctx) => ({ records: await ctx.db.query("attendance").collect(), totals: await ctx.db.query("attendance_totals").collect() }))).toEqual(once);
+    expect(await t.query(api.attendance.aggregate, { eventId })).toEqual({ ratingCount: 3, averageWorthIt: 6, investorConfirmations: 1, ratingScale: 10 });
+  });
+
+  test("a new response on an unmigrated event converts its legacy totals instead of mixing scales", async () => {
+    const { t, alice, bob, eventId } = await setup();
+    await t.mutation(api.users.upsert, userArgs("charlie"));
+    await t.run(async (ctx) => {
+      await ctx.db.insert("attendance", { userId: alice, eventId, going: true, attended: true, rating: 5, investors: "yes" });
+      await ctx.db.insert("attendance", { userId: bob, eventId, going: true, attended: true, rating: 3, investors: "no" });
+      const charlie = (await ctx.db.query("users").withIndex("by_device", (q) => q.eq("deviceId", "charlie")).unique())!._id;
+      await ctx.db.insert("attendance", { userId: charlie, eventId, going: true });
+      await ctx.db.insert("attendance_totals", { eventId, ratingCount: 2, ratingSum: 8, investorConfirmations: 1 });
+    });
+    await t.mutation(api.attendance.respond, { deviceId: "charlie", eventId, attended: true, rating: 7, investors: "unsure" });
+    await t.mutation(api.attendance.respond, { deviceId: "alice", eventId, attended: true, rating: 10, investors: "yes" });
+    expect(await t.query(api.attendance.aggregate, { eventId })).toEqual({ ratingCount: 3, averageWorthIt: 23 / 3, investorConfirmations: 1, ratingScale: 10 });
+    await t.mutation(internal.attendance.migrateRatingsTo10, {});
+    expect(await t.query(api.attendance.aggregate, { eventId })).toEqual({ ratingCount: 3, averageWorthIt: 23 / 3, investorConfirmations: 1, ratingScale: 10 });
+  });
+
   test("seed is idempotent, clearly fictional, immediately aggregated, and leaves other seeds unchanged", async () => {
     const { t, eventId } = await setup();
     await t.mutation(internal.seed.run, {});
@@ -209,7 +245,7 @@ describe("attendance", () => {
       const event = await t.run((ctx) => ctx.db.get(id));
       expect(event?.title).toContain("[DEMO]");
       expect(event?.endTime).toBeLessThan(NOW);
-      expect(await t.query(api.attendance.aggregate, { eventId: id })).toEqual({ ratingCount: 3, averageWorthIt: 4, investorConfirmations: 1 });
+      expect(await t.query(api.attendance.aggregate, { eventId: id })).toEqual({ ratingCount: 3, averageWorthIt: 8, investorConfirmations: 1, ratingScale: 10 });
     }
     const allBefore = await t.run(async (ctx) => ({ events: await ctx.db.query("events").collect(), users: await ctx.db.query("users").collect(), attendance: await ctx.db.query("attendance").collect(), totals: await ctx.db.query("attendance_totals").collect() }));
     vi.setSystemTime(NOW + 86_400_000);

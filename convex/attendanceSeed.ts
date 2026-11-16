@@ -25,7 +25,7 @@ export const run = internalMutation({
         if (await recordFor(ctx, userId, eventId)) continue;
         const id = await ctx.db.insert("attendance", { userId, eventId, going: true });
         const record = (await ctx.db.get(id))!;
-        await saveResponse(ctx, record, { attended: true, rating: [5, 4, 3][i], investors: i === 0 ? "yes" : i === 1 ? "no" : "unsure", note: "Demo feedback (synthetic)." });
+        await saveResponse(ctx, record, { attended: true, rating: [10, 8, 6][i], investors: i === 0 ? "yes" : i === 1 ? "no" : "unsure", note: "Demo feedback (synthetic)." });
       }
     }
     if (deviceId !== undefined) {
@@ -35,7 +35,7 @@ export const run = internalMutation({
         if ((await recordsFor(ctx, userId)).length >= MAX_COMMITMENTS) throw new Error("Attendance limit exceeded");
         const id = await ctx.db.insert("attendance", { userId, eventId, going: true });
         if (index === 1) await saveResponse(ctx, (await ctx.db.get(id))!, {
-          attended: true, rating: 4, investors: "unsure", note: "Demo: useful conversations with other builders.",
+          attended: true, rating: 8, investors: "unsure", note: "Demo: useful conversations with other builders.",
         });
       }
     }

@@ -65,5 +65,5 @@ const styles = StyleSheet.create({
   },
   title: { color: colors.white, fontSize: 14, fontWeight: "600" },
   body: { color: "rgba(255,255,255,0.7)", fontSize: 13, marginTop: 1 },
-  action: { color: "#FF9A6B", fontSize: 14, fontWeight: "600" },
+  action: { color: "#8FC1FF", fontSize: 14, fontWeight: "600" },
 });

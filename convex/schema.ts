@@ -182,8 +182,10 @@ export default defineSchema({
     workEmailVerifiedVia: v.optional(verificationMode),
     emailVerificationTime: v.optional(v.number()),
     phoneVerificationTime: v.optional(v.number()),
+    friendCode: v.optional(v.string()),
   })
     .index("by_device", ["deviceId"])
+    .index("by_friend_code", ["friendCode"])
     .index("email", ["email"])
     .index("phone", ["phone"]),
 
@@ -257,18 +259,38 @@ export default defineSchema({
     investors: v.optional(v.union(v.literal("yes"), v.literal("no"), v.literal("unsure"))),
     note: v.optional(v.string()),
     dismissedAt: v.optional(v.number()),
+    ratingScale: v.optional(v.literal(10)),
   })
     .index("by_user_event", ["userId", "eventId"])
     .index("by_user_going", ["userId", "going"])
     .index("by_user_attended", ["userId", "attended"])
-    .index("by_event", ["eventId"]),
+    .index("by_event", ["eventId"])
+    .index("by_rating_scale", ["ratingScale"]),
 
   attendance_totals: defineTable({
     eventId: v.id("events"),
     ratingCount: v.number(),
     ratingSum: v.number(),
     investorConfirmations: v.number(),
-  }).index("by_event", ["eventId"]),
+    ratingScale: v.optional(v.literal(10)),
+  })
+    .index("by_event", ["eventId"])
+    .index("by_rating_scale", ["ratingScale"]),
+
+  friendships: defineTable({
+    requesterId: v.id("users"),
+    addresseeId: v.id("users"),
+    status: v.union(v.literal("pending"), v.literal("accepted")),
+    createdAt: v.number(),
+    respondedAt: v.optional(v.number()),
+  })
+    .index("by_pair", ["requesterId", "addresseeId"])
+    .index("by_addressee", ["addresseeId", "requesterId"]),
+
+  friend_request_rates: defineTable({
+    userId: v.id("users"),
+    requests: v.array(v.number()),
+  }).index("by_user", ["userId"]),
 
   companies: defineTable({
     name: v.string(),

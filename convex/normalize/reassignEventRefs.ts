@@ -1,5 +1,6 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
+import { RATING_SCALE, scaledRating } from "../attendanceModel";
 import { deletePrepReferences, rekeyPrepReferences } from "../prepReferences";
 
 const MAX_MERGE_RECORDS = 4000;
@@ -31,7 +32,7 @@ async function mergeAttendance(ctx: MutationCtx, from: Id<"events">, to: Id<"eve
     const dismissals = group.flatMap((r) => r.dismissedAt === undefined ? [] : [r.dismissedAt]);
     const response = {
       attended: winner.attended,
-      rating: winner.rating,
+      rating: scaledRating(winner),
       investors: winner.investors,
       note: winner.note ?? group.find((r) => r.note !== undefined)?.note,
     };
@@ -40,6 +41,7 @@ async function mergeAttendance(ctx: MutationCtx, from: Id<"events">, to: Id<"eve
       going: group.some((r) => r.going),
       dismissedAt: dismissals.length ? Math.min(...dismissals) : undefined,
       ...response,
+      ratingScale: RATING_SCALE,
     });
     for (const record of group) if (record._id !== target._id) await ctx.db.delete(record._id);
     if (response.attended === true && response.rating !== undefined) {
@@ -54,7 +56,7 @@ async function mergeAttendance(ctx: MutationCtx, from: Id<"events">, to: Id<"eve
   ));
   const [droppedTotal, canonicalTotal] = totals;
   if (droppedTotal) await ctx.db.delete(droppedTotal._id);
-  const values = { eventId: to, ratingCount, ratingSum, investorConfirmations };
+  const values = { eventId: to, ratingCount, ratingSum, investorConfirmations, ratingScale: RATING_SCALE };
   if (records.length) {
     if (canonicalTotal) await ctx.db.patch(canonicalTotal._id, values);
     else await ctx.db.insert("attendance_totals", values);

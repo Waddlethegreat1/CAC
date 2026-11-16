@@ -6,9 +6,11 @@ import { BackIcon, CheckIcon } from "@/components/icons";
 import { colors, layout, radius, shadow, space, type } from "@/constants/theme";
 import { isPendingVerification, isVerified } from "@/lib/connections";
 
-export const goBack = (fallback: "/inbox" | "/companies" = "/inbox") => (router.canGoBack() ? router.back() : router.replace(fallback));
+type Fallback = "/inbox" | "/companies" | "/profile";
 
-export function ScreenHeader({ title, subtitle, right, fallback }: { title: string; subtitle?: string; right?: ReactNode; fallback?: "/inbox" | "/companies" }) {
+export const goBack = (fallback: Fallback = "/inbox") => (router.canGoBack() ? router.back() : router.replace(fallback));
+
+export function ScreenHeader({ title, subtitle, right, fallback }: { title: string; subtitle?: string; right?: ReactNode; fallback?: Fallback }) {
   return (
     <View style={styles.header}>
       <Pressable testID="back" accessibilityRole="button" accessibilityLabel="Back" onPress={() => goBack(fallback)} style={styles.iconBtn}>
@@ -71,8 +73,8 @@ export function PendingVerificationNotice() {
 }
 
 export function Pill({ label, tone = "neutral" }: { label: string; tone?: "neutral" | "accent" | "success" }) {
-  const color = tone === "accent" ? colors.emberInk : tone === "success" ? colors.success : colors.muted;
-  const bg = tone === "accent" ? colors.emberSoft : tone === "success" ? "rgba(31,157,58,0.12)" : colors.secondary;
+  const color = tone === "accent" ? colors.brandInk : tone === "success" ? colors.success : colors.muted;
+  const bg = tone === "accent" ? colors.brandSoft : tone === "success" ? "rgba(31,157,58,0.12)" : colors.secondary;
   return (
     <View style={[styles.pill, { backgroundColor: bg }]}>
       <Text style={[styles.pillText, { color }]}>{label}</Text>

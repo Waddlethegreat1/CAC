@@ -6,7 +6,7 @@ import { colors, type } from "@/constants/theme";
 export function Brand({ size = 24 }: { size?: number }) {
   return (
     <View style={styles.row} accessibilityRole="header">
-      <Icon name="compass" size={size} color={colors.ember} strokeWidth={1.75} />
+      <Icon name="compass" size={size} color={colors.brand} strokeWidth={1.75} />
       <Text style={[styles.text, size > 24 && { fontSize: size * 0.9, lineHeight: size * 1.1 }]}>Scout</Text>
     </View>
   );

@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   motion: { minHeight: 44, justifyContent: "center" },
   motionText: { fontSize: 11, color: "#FFFFFF", textDecorationLine: "underline" },
   message: { marginTop: "auto" },
-  rule: { width: 32, height: 3, backgroundColor: colors.ember, marginBottom: 22 },
+  rule: { width: 32, height: 3, backgroundColor: colors.brand, marginBottom: 22 },
   headline: { color: "#FAFAF7", fontSize: 46, lineHeight: 49, letterSpacing: -1.8, fontWeight: "600", maxWidth: 390 },
   headlineCompact: { fontSize: 38, lineHeight: 41, letterSpacing: -1.4 },
   support: { fontSize: 16, lineHeight: 24, color: "#CDD2CF", marginTop: 20, maxWidth: 320 },

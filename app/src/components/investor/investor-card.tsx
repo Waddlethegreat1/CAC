@@ -57,7 +57,7 @@ export function InvestorCard({ event }: { event: InvestorEvent }) {
 const styles = StyleSheet.create({
   card: { ...shadow.card, flexDirection: "row", gap: 12, padding: layout.cardPadding, borderRadius: radius.card, backgroundColor: colors.surface },
   tile: { width: 52, height: 56, borderRadius: radius.sm, backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center" },
-  month: { fontSize: 11, fontWeight: "600", color: colors.ember, letterSpacing: 0.3 },
+  month: { fontSize: 11, fontWeight: "600", color: colors.brand, letterSpacing: 0.3 },
   day: { ...type.numeric, fontSize: 22, lineHeight: 24, fontWeight: "600", color: colors.ink, marginTop: 2 },
   body: { flex: 1, gap: 4 },
   title: { ...type.cardTitle, color: colors.ink },

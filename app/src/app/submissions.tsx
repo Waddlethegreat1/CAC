@@ -96,11 +96,11 @@ export default function SubmissionsScreen() {
         }
         ListEmptyComponent={
           items === undefined ? (
-            <ActivityIndicator style={{ marginTop: 48 }} color={colors.ember} />
+            <ActivityIndicator style={{ marginTop: 48 }} color={colors.brand} />
           ) : (
             <EmptyState
               testID="submissions-empty"
-              icon={<LinkIcon size={22} color={colors.ember} />}
+              icon={<LinkIcon size={22} color={colors.brand} />}
               title="No links yet"
               body="Know an event Scout is missing? Paste its link and we'll add it"
               action={{ label: "Add an event", onPress: () => router.push("/submit"), testID: "submissions-empty-add" }}
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   dhead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", height: 52, paddingHorizontal: 8 },
   iconBtn: { width: layout.tapTarget, height: layout.tapTarget, alignItems: "center", justifyContent: "center", borderRadius: radius.button },
   linkBtn: { height: layout.tapTarget, paddingHorizontal: 12, justifyContent: "center" },
-  linkText: { ...type.label, color: colors.ember },
+  linkText: { ...type.label, color: colors.brand },
   list: { paddingHorizontal: layout.screenPadding, paddingBottom: space.xxxl },
   title: { ...type.screenTitle, color: colors.ink },
   meta: { fontSize: 12, color: colors.subtle, marginTop: space.xs },

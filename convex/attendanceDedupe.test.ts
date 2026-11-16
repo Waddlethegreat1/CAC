@@ -25,7 +25,7 @@ async function setup() {
     deviceId, role: "student", interests: [], city: "San Francisco", lat: 37.77, lng: -122.42, locationSource: "city",
   });
   const attendance = (userId: Id<"users">, eventId: Id<"events">, fields: Partial<Pick<Doc<"attendance">, "going" | "attended" | "rating" | "investors" | "note" | "dismissedAt">> = {}) =>
-    t.run((ctx) => ctx.db.insert("attendance", { userId, eventId, going: true, ...fields }));
+    t.run((ctx) => ctx.db.insert("attendance", { userId, eventId, going: true, ratingScale: 10, ...fields }));
   const snapshot = () => t.run(async (ctx) => ({
     records: await ctx.db.query("attendance").collect(),
     totals: await ctx.db.query("attendance_totals").collect(),
@@ -42,7 +42,7 @@ describe("attendance across duplicate-event backfills", () => {
     await t.run(async (ctx) => {
       await ctx.db.patch(syntheticId, { synthetic: true });
       for (const eventId of [realId, syntheticId]) {
-        await ctx.db.insert("attendance_totals", { eventId, ratingCount: 1, ratingSum: eventId === realId ? 4 : 5, investorConfirmations: 1 });
+        await ctx.db.insert("attendance_totals", { eventId, ratingCount: 1, ratingSum: eventId === realId ? 4 : 5, investorConfirmations: 1, ratingScale: 10 as const });
         await ctx.db.insert("saves", { userId, eventId, savedAt: 1 });
       }
     });
@@ -76,7 +76,7 @@ describe("attendance across duplicate-event backfills", () => {
     await t.run(async (ctx) => {
       for (const eventId of [purge, unrelated]) {
         for (const userId of [sharedUser, unrelatedUser]) await ctx.db.insert("saves", { userId, eventId, savedAt: 10 });
-        await ctx.db.insert("attendance_totals", { eventId, ratingCount: 1, ratingSum: eventId === purge ? 5 : 3, investorConfirmations: eventId === purge ? 1 : 0 });
+        await ctx.db.insert("attendance_totals", { eventId, ratingCount: 1, ratingSum: eventId === purge ? 5 : 3, investorConfirmations: eventId === purge ? 1 : 0, ratingScale: 10 as const });
       }
     });
     const snapshot = () => t.run(async (ctx) => ({
@@ -107,7 +107,7 @@ describe("attendance across duplicate-event backfills", () => {
     await attendance(userId, purge);
     await t.run(async (ctx) => {
       for (let i = 0; i < 3999; i++) await ctx.db.insert("saves", { userId, eventId: purge, savedAt: i });
-      await ctx.db.insert("attendance_totals", { eventId: purge, ratingCount: 0, ratingSum: 0, investorConfirmations: 0 });
+      await ctx.db.insert("attendance_totals", { eventId: purge, ratingCount: 0, ratingSum: 0, investorConfirmations: 0, ratingScale: 10 as const });
     });
     await expect(t.run(async (ctx) => {
       await deleteEventRefs(ctx, purge);
@@ -198,7 +198,7 @@ describe("attendance across duplicate-event backfills", () => {
     await attendance(conflictingUser, drop, { attended: true, rating: 4, investors: "yes", dismissedAt: 20 });
     await attendance(movedUser, third, { going: false, attended: true, rating: 3, investors: "unsure" });
     await t.run(async (ctx) => {
-      for (const eventId of [keep, drop, third]) await ctx.db.insert("attendance_totals", { eventId, ratingCount: 50, ratingSum: 250, investorConfirmations: 50 });
+      for (const eventId of [keep, drop, third]) await ctx.db.insert("attendance_totals", { eventId, ratingCount: 50, ratingSum: 250, investorConfirmations: 50, ratingScale: 10 as const });
     });
 
     await t.mutation(internal.normalize.backfill.run, { batchSize: 50 });
@@ -209,7 +209,7 @@ describe("attendance across duplicate-event backfills", () => {
     expect(after.records.find((r) => r.userId === conflictingUser)).toMatchObject({ going: true, attended: true, rating: 4, investors: "yes", note: "Existing note", dismissedAt: 10 });
     expect(after.totals).toHaveLength(1);
     expect(after.totals[0]).toMatchObject({ eventId: keep, ratingCount: 3, ratingSum: 9, investorConfirmations: 1 });
-    expect(await t.query(api.attendance.aggregate, { eventId: keep })).toEqual({ ratingCount: 3, averageWorthIt: 3, investorConfirmations: 1 });
+    expect(await t.query(api.attendance.aggregate, { eventId: keep })).toEqual({ ratingCount: 3, averageWorthIt: 3, investorConfirmations: 1, ratingScale: 10 });
     for (const id of [drop, third]) {
       expect(await t.query(api.attendance.aggregate, { eventId: id })).toBeNull();
       expect(await t.run((ctx) => ctx.db.get(id))).toBeNull();
@@ -225,7 +225,7 @@ describe("attendance across duplicate-event backfills", () => {
     const response = { deviceId: "dual", eventId: keep, attended: true, rating: 5, investors: "yes" as const };
     await t.mutation(api.attendance.respond, response);
     await t.mutation(api.attendance.respond, response);
-    expect(await t.query(api.attendance.aggregate, { eventId: keep })).toEqual({ ratingCount: 3, averageWorthIt: 4, investorConfirmations: 2 });
+    expect(await t.query(api.attendance.aggregate, { eventId: keep })).toEqual({ ratingCount: 3, averageWorthIt: 4, investorConfirmations: 2, ratingScale: 10 });
     await t.mutation(api.attendance.respond, { deviceId: "dual", eventId: keep, attended: false });
     expect(await t.query(api.attendance.aggregate, { eventId: keep })).toBeNull();
   });
@@ -233,7 +233,7 @@ describe("attendance across duplicate-event backfills", () => {
   test("removes orphaned totals even when neither event has attendance rows", async () => {
     const { t, ids: [keep, drop, third], snapshot } = await setup();
     await t.run(async (ctx) => {
-      for (const eventId of [keep, drop, third]) await ctx.db.insert("attendance_totals", { eventId, ratingCount: 3, ratingSum: 15, investorConfirmations: 3 });
+      for (const eventId of [keep, drop, third]) await ctx.db.insert("attendance_totals", { eventId, ratingCount: 3, ratingSum: 15, investorConfirmations: 3, ratingScale: 10 as const });
     });
     await t.mutation(internal.normalize.backfill.run, { batchSize: 50 });
     expect(await snapshot()).toEqual({ records: [], totals: [] });

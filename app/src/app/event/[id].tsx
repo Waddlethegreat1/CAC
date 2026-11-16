@@ -6,12 +6,14 @@ import { useState } from "react";
 import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { EventTypeIcon } from "@/components/event-type-icon";
 import { EmptyState } from "@/components/feed/empty-state";
 import { EventPrep } from "@/components/event-prep";
 import { AttendanceAggregate, GoingButton } from "@/components/attendance";
 import { EventConnections } from "@/components/connections/event-connections";
 import { Toast, useToast } from "@/components/feed/toast";
-import { AlertIcon, BackIcon, BookmarkIcon, CalendarIcon, ChartIcon, CheckIcon, LinkIcon, PeopleIcon, PinIcon, ShareIcon, SparkIcon } from "@/components/icons";
+import { FriendsGoing } from "@/components/friends-going";
+import { AlertIcon, BackIcon, BookmarkIcon, CalendarIcon, CheckIcon, LinkIcon, PeopleIcon, PinIcon, ShareIcon, SparkIcon } from "@/components/icons";
 import { colors, EVENT_TYPE_META, INVESTOR_SOME_MIN, layout, radius, shadow, type } from "@/constants/theme";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
@@ -61,7 +63,7 @@ export default function EventDetail() {
   const [error, setError] = useState<string | null>(null);
   const { toast, show, hide } = useToast();
 
-  if (event === undefined) return <ActivityIndicator style={{ flex: 1, backgroundColor: colors.bg }} color={colors.ember} />;
+  if (event === undefined) return <ActivityIndicator style={{ flex: 1, backgroundColor: colors.bg }} color={colors.brand} />;
   if (event === null) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -70,7 +72,7 @@ export default function EventDetail() {
             <BackIcon color={colors.ink} />
           </Pressable>
         </View>
-        <EmptyState icon={<SparkIcon size={22} color={colors.ember} />} title="This event is no longer listed" body="The organizer may have removed or moved it" action={{ label: "Back to events", onPress: back }} />
+        <EmptyState icon={<SparkIcon size={22} color={colors.brand} />} title="This event is no longer listed" body="The organizer may have removed or moved it" action={{ label: "Back to events", onPress: back }} />
       </SafeAreaView>
     );
   }
@@ -128,14 +130,17 @@ export default function EventDetail() {
           <BackIcon color={colors.ink} />
         </Pressable>
         <View style={styles.kind}>
+          <EventTypeIcon eventType={event.eventType} size={14} />
           <Text style={styles.kindText}>{meta.label}</Text>
         </View>
         <View style={styles.iconBtn} />
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
-        <View style={[styles.hero, tier === "high" && { backgroundColor: colors.goldSoft }]}>
-          {tier === "high" ? <ChartIcon color={colors.gold} /> : <SparkIcon color={colors.ember} />}
+        <View style={[styles.hero, { backgroundColor: tier === "high" ? colors.goldSoft : `${meta.color}14` }]}>
+          <View style={styles.heroBadge}>
+            <EventTypeIcon eventType={event.eventType} size={28} />
+          </View>
           <View style={styles.src}>
             <Text style={styles.srcText}>via {source}</Text>
           </View>
@@ -167,7 +172,7 @@ export default function EventDetail() {
             <PinIcon color={colors.subtle} />
             <View style={{ flex: 1 }}>
               <Text style={styles.factMain}>{place}</Text>
-              <Text style={[styles.factSub, !event.isOnline && { color: colors.emberInk }]}>{placeSub}</Text>
+              <Text style={[styles.factSub, !event.isOnline && { color: colors.brandInk }]}>{placeSub}</Text>
             </View>
           </Pressable>
           {hosts.length ? (
@@ -195,6 +200,7 @@ export default function EventDetail() {
         <EventPrep key={event._id} event={event} deviceId={deviceId} />
 
         <View style={{ marginHorizontal: layout.screenPadding, marginTop: 12 }}><GoingButton event={event} /></View>
+        <FriendsGoing eventId={event._id} />
         <EventConnections event={event} />
         <View testID="investor-signal" accessibilityLabel="Investor signal" style={[styles.signal, tier === "low" && styles.signalLow]}>
           <View style={styles.signalHead}>
@@ -256,11 +262,11 @@ export default function EventDetail() {
             style={({ pressed }) => [styles.btn, styles.half, saved ? styles.savedBtn : styles.primary, pressed && styles.pressed]}
           >
             {saving ? (
-              <ActivityIndicator size="small" color={saved ? colors.emberInk : colors.white} />
+              <ActivityIndicator size="small" color={saved ? colors.brandInk : colors.white} />
             ) : (
-              <BookmarkIcon color={saved ? colors.emberInk : colors.white} filled={!!saved} />
+              <BookmarkIcon color={saved ? colors.brandInk : colors.white} filled={!!saved} />
             )}
-            <Text style={[styles.btnText, { color: saved ? colors.emberInk : colors.white }]}>{saving ? "Saving" : saved ? "Saved" : "Save"}</Text>
+            <Text style={[styles.btnText, { color: saved ? colors.brandInk : colors.white }]}>{saving ? "Saving" : saved ? "Saved" : "Save"}</Text>
           </Pressable>
           <Pressable
             testID="open-link"
@@ -284,13 +290,14 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   dhead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", height: 52, paddingHorizontal: 8 },
   iconBtn: { width: layout.tapTarget, height: layout.tapTarget, alignItems: "center", justifyContent: "center", borderRadius: radius.button },
-  kind: { height: 24, paddingHorizontal: 8, borderRadius: radius.tag, backgroundColor: colors.secondary, justifyContent: "center" },
+  kind: { height: 24, paddingHorizontal: 8, borderRadius: radius.tag, backgroundColor: colors.secondary, flexDirection: "row", alignItems: "center", gap: 6 },
   kindText: { ...type.tag, fontWeight: "500", color: colors.muted },
+  heroBadge: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", ...shadow.plate },
   hero: {
     marginHorizontal: layout.screenPadding,
     height: 120,
     borderRadius: radius.lg,
-    backgroundColor: colors.emberSoft,
+    backgroundColor: colors.brandSoft,
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
@@ -308,8 +315,8 @@ const styles = StyleSheet.create({
   actions: { flexDirection: "row", gap: 8, marginHorizontal: layout.screenPadding, marginTop: 12 },
   btn: { height: layout.buttonHeight, borderRadius: radius.button, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 12 },
   half: { flex: 1 },
-  primary: { backgroundColor: colors.ember },
-  savedBtn: { backgroundColor: colors.emberSoft, borderWidth: 1, borderColor: colors.ember },
+  primary: { backgroundColor: colors.brand },
+  savedBtn: { backgroundColor: colors.brandSoft, borderWidth: 1, borderColor: colors.brand },
   outline: { backgroundColor: colors.surface, borderWidth: 0.5, borderColor: colors.lineStrong },
   pressed: { opacity: 0.75 },
   btnText: { fontSize: 15, fontWeight: "500", color: colors.ink, flexShrink: 1 },

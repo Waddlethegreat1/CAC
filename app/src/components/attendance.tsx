@@ -5,7 +5,7 @@ import { AppState, Pressable, StyleSheet, Text, TextInput, View } from "react-na
 
 import { Button } from "@/components/button";
 import { SelectChip } from "@/components/select-chip";
-import { colors, radius, shadow, type } from "@/constants/theme";
+import { colors, layout, radius, shadow, type } from "@/constants/theme";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { errorCode, errorCopy } from "@/lib/connections";
@@ -99,10 +99,8 @@ function CheckIn({ event }: { event: Doc<"events"> }) {
         </View>
       ) : (
         <>
-          <Text style={styles.meta}>Worth your time · 1 is not really, 5 is absolutely</Text>
-          <View style={styles.row}>
-            {[1, 2, 3, 4, 5].map((n) => <SelectChip key={n} testID={`worth-${n}`} label={String(n)} selected={rating === n} onPress={() => setRating(n)} />)}
-          </View>
+          <Text style={styles.meta}>Worth your time · 1 is not really, 10 is absolutely</Text>
+          <RatingPicker value={rating} onChange={setRating} />
           <Text style={styles.label}>Were investors or recruiters there?</Text>
           <View style={styles.row}>
             {([ ["yes", "Yes"], ["no", "No"], ["unsure", "Not sure"] ] as const).map(([value, label]) => <SelectChip key={value} testID={`investors-${value}`} label={label} selected={investors === value} onPress={() => setInvestors(value)} />)}
@@ -118,12 +116,37 @@ function CheckIn({ event }: { event: Doc<"events"> }) {
   );
 }
 
+const RATINGS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+function RatingPicker({ value, onChange }: { value?: number; onChange: (n: number) => void }) {
+  return (
+    <View testID="worth-picker" accessibilityRole="radiogroup" accessibilityLabel="Worth it, 1 to 10" style={styles.picker}>
+      {RATINGS.map((n) => {
+        const on = value === n;
+        return (
+          <Pressable
+            key={n}
+            testID={`worth-${n}`}
+            accessibilityRole="radio"
+            accessibilityLabel={`${n} out of 10`}
+            accessibilityState={{ checked: on }}
+            onPress={() => onChange(n)}
+            style={({ pressed }) => [styles.pick, on && styles.pickOn, pressed && !on && { opacity: 0.6 }]}
+          >
+            <Text style={[styles.pickLabel, on && styles.pickLabelOn]}>{n}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 export function AttendanceAggregate({ eventId }: { eventId: Id<"events"> }) {
   const aggregate = useQuery(api.attendance.aggregate, { eventId });
   if (!aggregate) return null;
   return (
     <View testID="attendance-aggregate" style={styles.aggregate}>
-      <Text style={styles.label}>{aggregate.averageWorthIt.toFixed(1)} worth it · {aggregate.ratingCount} ratings</Text>
+      <Text style={styles.label}>{aggregate.averageWorthIt.toFixed(1)}/10 worth it · {aggregate.ratingCount} ratings</Text>
       <Text style={styles.confirmed}>{aggregate.investorConfirmations > 0 ? `Investors or recruiters confirmed by ${aggregate.investorConfirmations} attendee${aggregate.investorConfirmations === 1 ? "" : "s"}` : "No investor or recruiter confirmations from attendees"}</Text>
       <Text style={styles.meta}>Reported by attendees · separate from the inferred score</Text>
     </View>
@@ -140,7 +163,7 @@ export function AttendanceHistory() {
       {history === undefined ? <Text style={styles.meta}>Loading your history…</Text> : history.length === 0 ? <Text style={styles.meta}>Your first room is waiting. Mark an event Going, then check in after it ends</Text> : history.map((item) => (
         <Pressable key={item.event._id} accessibilityRole="button" onPress={() => router.push({ pathname: "/event/[id]", params: { id: item.event._id } })} style={styles.historyItem}>
           <Text style={styles.eventTitle}>{item.event.title}</Text>
-          <Text style={styles.meta}>{relativeDay(item.event.startTime, item.event.endTime)} · {item.rating ?? "—"}/5 worth it</Text>
+          <Text style={styles.meta}>{relativeDay(item.event.startTime, item.event.endTime)} · {item.rating ?? "—"}/10 worth it</Text>
           {item.note ? <Text style={styles.note}>{item.note}</Text> : null}
         </Pressable>
       ))}
@@ -149,19 +172,24 @@ export function AttendanceHistory() {
 }
 
 const styles = StyleSheet.create({
-  card: { padding: 14, marginVertical: 12, borderRadius: radius.card, backgroundColor: colors.surface, gap: 10, ...shadow.card, borderColor: colors.ember },
-  eyebrow: { ...type.tag, fontWeight: "500", letterSpacing: 1, color: colors.emberInk },
+  card: { padding: 14, marginVertical: 12, borderRadius: radius.card, backgroundColor: colors.surface, gap: 10, ...shadow.card, borderColor: colors.brand },
+  eyebrow: { ...type.tag, fontWeight: "500", letterSpacing: 1, color: colors.brandInk },
   heading: { ...type.cardTitle, fontSize: 18, color: colors.ink },
   eventTitle: { ...type.bodyStrong, color: colors.ink },
   label: { ...type.label, color: colors.ink },
   meta: { ...type.tag, color: colors.muted },
   row: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   half: { flex: 1 },
+  picker: { flexDirection: "row", gap: 3, padding: 3, borderRadius: radius.button + 2, backgroundColor: colors.secondary },
+  pick: { flex: 1, minWidth: 0, height: layout.tapTarget, borderRadius: radius.button - 2, alignItems: "center", justifyContent: "center" },
+  pickOn: { backgroundColor: colors.brand },
+  pickLabel: { ...type.label, ...type.numeric, fontSize: 15, color: colors.ink },
+  pickLabelOn: { color: colors.white },
   input: { minHeight: 44, paddingHorizontal: 12, borderRadius: radius.input, borderWidth: 1, borderColor: colors.lineStrong, color: colors.ink, fontSize: 14 },
   error: { ...type.meta, color: colors.danger, padding: 8 },
   going: { minHeight: 44, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: 0.5, borderColor: colors.line },
-  selected: { backgroundColor: colors.emberSoft },
-  goingLabel: { ...type.label, color: colors.emberInk },
+  selected: { backgroundColor: colors.brandSoft },
+  goingLabel: { ...type.label, color: colors.brandInk },
   aggregate: { gap: 6, paddingTop: 12, marginTop: 8, borderTopWidth: 0.5, borderColor: colors.lineStrong },
   confirmed: { ...type.meta, color: colors.gold },
   historyItem: { padding: 14, borderRadius: radius.card, backgroundColor: colors.surface, gap: 6, ...shadow.card },

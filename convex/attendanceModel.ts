@@ -10,6 +10,12 @@ export const eventDoc = v.object({
   _creationTime: v.number(),
 });
 export const MAX_COMMITMENTS = 1000;
+export const RATING_SCALE = 10 as const;
+
+export const scaledRating = (r: { rating?: number; ratingScale?: number }) =>
+  r.rating === undefined || r.ratingScale === RATING_SCALE ? r.rating : r.rating * 2;
+export const scaledRatingSum = (t: { ratingSum: number; ratingScale?: number }) =>
+  t.ratingScale === RATING_SCALE ? t.ratingSum : t.ratingSum * 2;
 
 export const userFor = (ctx: QueryCtx, deviceId: string) =>
   ctx.db.query("users").withIndex("by_device", (q) => q.eq("deviceId", deviceId)).unique();
@@ -55,8 +61,9 @@ export async function saveResponse(
   const values = {
     eventId: record.eventId,
     ratingCount: (totals?.ratingCount ?? 0) + Number(response.rating !== undefined) - Number(record.rating !== undefined),
-    ratingSum: (totals?.ratingSum ?? 0) + (response.rating ?? 0) - (record.rating ?? 0),
+    ratingSum: (totals ? scaledRatingSum(totals) : 0) + (response.rating ?? 0) - (scaledRating(record) ?? 0),
     investorConfirmations: (totals?.investorConfirmations ?? 0) + Number(response.investors === "yes") - Number(record.investors === "yes"),
+    ratingScale: RATING_SCALE,
   };
   if (totals) await ctx.db.patch(totals._id, values);
   else await ctx.db.insert("attendance_totals", values);
@@ -65,5 +72,6 @@ export async function saveResponse(
     rating: response.rating,
     investors: response.investors,
     note: response.note,
+    ratingScale: RATING_SCALE,
   });
 }
