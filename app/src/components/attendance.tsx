@@ -9,6 +9,7 @@ import { colors, layout, radius, shadow, type } from "@/constants/theme";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { errorCode, errorCopy } from "@/lib/connections";
+import { clearDraft, readDraft, writeDraft, type CheckInDraft } from "@/lib/check-in-draft";
 import { useDeviceId } from "@/lib/device";
 import { isPast, relativeDay } from "@/lib/format";
 
@@ -61,10 +62,10 @@ export function AttendancePrompt() {
   const now = useAttendanceNow();
   const pending = useQuery(api.attendance.pending, deviceId ? { deviceId, now } : "skip");
   const [last, setLast] = useState<{ deviceId: string | null; events: typeof pending }>({ deviceId, events: pending });
-  if (last.deviceId !== deviceId || (pending !== undefined && last.events !== pending)) {
+  if ((deviceId && last.deviceId !== deviceId) || (pending !== undefined && last.events !== pending)) {
     setLast({ deviceId, events: pending });
   }
-  const event = (pending ?? (last.deviceId === deviceId ? last.events : undefined))?.[0];
+  const event = (pending ?? last.events)?.[0];
   return event ? <CheckIn key={event._id} event={event} /> : null;
 }
 
@@ -72,10 +73,8 @@ function CheckIn({ event }: { event: Doc<"events"> }) {
   const deviceId = useDeviceId();
   const respond = useMutation(api.attendance.respond);
   const dismiss = useMutation(api.attendance.dismiss);
-  const [attended, setAttended] = useState(false);
-  const [rating, setRating] = useState<number>();
-  const [investors, setInvestors] = useState<"yes" | "no" | "unsure">();
-  const [note, setNote] = useState("");
+  const [{ attended, rating, investors, note }, setDraft] = useState(() => readDraft(event._id));
+  const update = (patch: Partial<CheckInDraft>) => setDraft(writeDraft(event._id, patch));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const send = async (action: "no" | "yes" | "dismiss") => {
@@ -84,6 +83,7 @@ function CheckIn({ event }: { event: Doc<"events"> }) {
     try {
       if (action === "dismiss") await dismiss({ deviceId, eventId: event._id });
       else await respond({ deviceId, eventId: event._id, attended: action === "yes", ...(action === "yes" ? { rating, investors, note } : {}) });
+      clearDraft(event._id);
     } catch { setError(true); }
     finally { setBusy(false); }
   };
@@ -95,17 +95,17 @@ function CheckIn({ event }: { event: Doc<"events"> }) {
       {!attended ? (
         <View style={styles.row}>
           <Button testID="attendance-no" label="Didn't go" variant="outline" disabled={busy} style={styles.half} onPress={() => void send("no")} />
-          <Button testID="attendance-yes" label="Yes, I went" disabled={busy} style={styles.half} onPress={() => setAttended(true)} />
+          <Button testID="attendance-yes" label="Yes, I went" disabled={busy} style={styles.half} onPress={() => update({ attended: true })} />
         </View>
       ) : (
         <>
           <Text style={styles.meta}>Worth your time · 1 is not really, 10 is absolutely</Text>
-          <RatingPicker value={rating} onChange={setRating} />
+          <RatingPicker value={rating} onChange={(n) => update({ rating: n })} />
           <Text style={styles.label}>Were investors or recruiters there?</Text>
           <View style={styles.row}>
-            {([ ["yes", "Yes"], ["no", "No"], ["unsure", "Not sure"] ] as const).map(([value, label]) => <SelectChip key={value} testID={`investors-${value}`} label={label} selected={investors === value} onPress={() => setInvestors(value)} />)}
+            {([ ["yes", "Yes"], ["no", "No"], ["unsure", "Not sure"] ] as const).map(([value, label]) => <SelectChip key={value} testID={`investors-${value}`} label={label} selected={investors === value} onPress={() => update({ investors: value })} />)}
           </View>
-          <TextInput testID="attendance-note" accessibilityLabel="One-line note (optional)" placeholder="One thing to remember (optional)" placeholderTextColor={colors.muted} value={note} onChangeText={(v) => setNote(v.replace(/[\r\n]/g, " "))} maxLength={240} style={styles.input} />
+          <TextInput testID="attendance-note" accessibilityLabel="One-line note (optional)" placeholder="One thing to remember (optional)" placeholderTextColor={colors.muted} value={note} onChangeText={(v) => update({ note: v.replace(/[\r\n]/g, " ") })} maxLength={240} style={styles.input} />
           <Button testID="submit-attendance" label="Save my check-in" loading={busy} disabled={!rating || !investors} onPress={() => void send("yes")} />
           <Text style={styles.meta}>Your note stays private. Only counts and averages are shared</Text>
         </>
