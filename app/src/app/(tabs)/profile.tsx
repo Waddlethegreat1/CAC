@@ -339,6 +339,9 @@ function ProfileForm({ user }: { user: User }) {
         </View>
       </View>
 
+      <Text style={styles.group}>Friends</Text>
+      <FriendsEntry />
+
       <AttendanceHistory />
       <Text style={styles.group}>Missing an event</Text>
       <View style={styles.card}>
@@ -375,6 +378,22 @@ function ProfileForm({ user }: { user: User }) {
 
       <Button testID="restart-onboarding" variant="ghost" label="Start onboarding over" onPress={() => router.push("/onboarding")} />
     </ScrollView>
+  );
+}
+
+function FriendsEntry() {
+  const deviceId = useDeviceId();
+  const list = useQuery(api.friends.list, deviceId ? { deviceId } : "skip");
+  const incoming = list?.incoming.length ?? 0;
+  const summary = !list ? "" : incoming ? `${incoming} new request${incoming === 1 ? "" : "s"}` : list.friends.length ? `${list.friends.length} friend${list.friends.length === 1 ? "" : "s"}` : "Add by code";
+  return (
+    <View style={styles.card}>
+      <Pressable testID="profile-friends" accessibilityRole="button" accessibilityLabel={`Friends${summary ? `, ${summary}` : ""}`} onPress={() => router.push("/friends")} style={styles.prow}>
+        <Text style={styles.body}>See which events your friends are going to</Text>
+        {summary ? <Text style={[styles.value, incoming ? { color: colors.brandInk } : null]}>{summary}</Text> : null}
+        <Icon name="chevron-right" size={16} color={colors.subtle} />
+      </Pressable>
+    </View>
   );
 }
 
